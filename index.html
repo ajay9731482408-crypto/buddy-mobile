@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="night">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05060f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="Buddy: your companion for tasks, goals, lists, water and mood. Talk to it by voice. Works on your phone.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Buddy</title>
+<style>
+/* ---- Design system -------------------------------------------------------------
+   Corners follow one rule (Border Radius Tips): outer radius = inner radius + padding.
+   Motion: one duration scale and one easing curve, all switched off by reduced-motion or Calm mode. */
+:root{
+  --pad:14px; --r-inner:14px; --r-outer:calc(var(--r-inner) + var(--pad));
+  --d1:.15s; --d2:.3s; --d3:.5s; --ease:cubic-bezier(.2,.8,.2,1); --spring:cubic-bezier(.34,1.4,.64,1);
+  --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
+}
+/* Themes: change only colour variables */
+[data-theme=night]{--bg:#05060f;--surface:#0f1222;--surface2:#151a2e;--line:rgba(255,255,255,.08);--text:#e8f1f5;--muted:#8a9bb0;--c1:#0EA5A4;--c2:#06B6D4;--glow:rgba(14,165,164,.45)}
+[data-theme=teal]{--bg:#031417;--surface:#082228;--surface2:#0c2d35;--line:rgba(255,255,255,.09);--text:#e6fbf8;--muted:#7fb3ad;--c1:#2dd4bf;--c2:#22d3ee;--glow:rgba(45,212,191,.45)}
+[data-theme=warm]{--bg:#120a08;--surface:#1d110d;--surface2:#2a1813;--line:rgba(255,255,255,.09);--text:#fbeee8;--muted:#c9a79a;--c1:#ff5b2e;--c2:#ffb67a;--glow:rgba(255,91,46,.45)}
+[data-theme=light]{--bg:#eef3f7;--surface:#ffffff;--surface2:#f1f5f9;--line:rgba(15,23,42,.08);--text:#0f172a;--muted:#475569;--c1:#0e7490;--c2:#0891b2;--glow:rgba(8,145,178,.3)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(760px 460px at 50% -140px,var(--glow),transparent 70%),var(--bg);color:var(--text);
+  font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;display:flex;flex-direction:column;position:relative}
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:.7}
+.app{position:relative;z-index:1;display:flex;flex-direction:column;height:100%;max-width:560px;width:100%;margin:0 auto}
+header{display:flex;align-items:center;gap:10px;padding:calc(var(--safe-top) + 12px) 16px 10px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.05rem}
+.orb{width:34px;height:34px;border-radius:50%;flex:none;background:radial-gradient(circle at 35% 30%,#fff,var(--c1) 42%,var(--c2) 82%);
+  box-shadow:0 0 18px var(--glow);position:relative;animation:float 4.5s ease-in-out infinite}
+.orb::before,.orb::after{content:"";position:absolute;top:13px;width:4px;height:8px;border-radius:4px;background:var(--bg)}
+.orb::before{left:11px}.orb::after{right:11px}
+.pill{margin-left:auto;font-size:.78rem;color:var(--muted);padding:6px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
+.pill.ok{color:var(--c1)}.pill.bad{color:#f87171}
+.iconbtn{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--text);display:grid;place-items:center;cursor:pointer;transition:transform var(--d1) var(--ease)}
+.iconbtn:active{transform:scale(.94)}
+main{flex:1;overflow-y:auto;padding:4px 14px 20px;-webkit-overflow-scrolling:touch;position:relative}
+.view{display:none}.view.on{display:block;animation:rise var(--d2) var(--ease) both}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-outer);padding:var(--pad);margin:0 0 12px;box-shadow:0 18px 40px -30px #000}
+.card h2{font-size:1rem;margin:0 0 10px;font-weight:650;display:flex;align-items:center;gap:8px}
+.muted{color:var(--muted);font-size:.9rem}
+.row{display:flex;gap:8px;align-items:center}
+.hero{display:flex;align-items:center;gap:14px}
+.big{width:66px;height:66px;border-radius:50%;flex:none;position:relative;background:radial-gradient(circle at 35% 30%,#fff,var(--c1) 42%,var(--c2) 82%);
+  box-shadow:0 0 30px var(--glow);animation:float 4.5s ease-in-out infinite}
+.big::before,.big::after{content:"";position:absolute;top:25px;width:6px;height:12px;border-radius:6px;background:var(--bg);transition:height var(--d2) var(--ease)}
+.big::before{left:20px}.big::after{right:20px}
+.big.think::before,.big.think::after{height:3px;top:31px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
+.stat{background:var(--surface2);border-radius:var(--r-inner);padding:10px 12px}
+.stat b{display:block;font-size:1.25rem;font-variant-numeric:tabular-nums}.stat span{color:var(--muted);font-size:.8rem}
+.chat{display:flex;flex-direction:column;gap:8px;max-height:40vh;overflow-y:auto;padding:2px;scroll-behavior:smooth}
+.msg{max-width:88%;padding:9px 12px;border-radius:var(--r-inner);white-space:pre-wrap;overflow-wrap:anywhere;animation:rise var(--d2) var(--ease) both}
+.msg.u{align-self:flex-end;background:linear-gradient(120deg,var(--c1),var(--c2));color:#031417;font-weight:600}
+.msg.b{align-self:flex-start;background:var(--surface2);border:1px solid var(--line)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 0 0;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.chip,.btn{font:inherit;font-weight:600;color:var(--text);background:var(--surface2);border:1px solid var(--line);border-radius:var(--r-inner);
+  min-height:44px;padding:0 14px;cursor:pointer;flex:none;transition:transform var(--d1) var(--ease),box-shadow var(--d2) var(--ease)}
+.btn.primary{background:linear-gradient(120deg,var(--c1),var(--c2));color:#031417;border:0}
+.btn.danger{background:rgba(248,113,113,.14);color:#fecaca;border:1px solid rgba(248,113,113,.3)}
+.btn:disabled{opacity:.5}
+.chip:active,.btn:active{transform:scale(.97)}
+:focus-visible{outline:none;box-shadow:0 0 0 3px var(--glow)}
+input,select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:var(--r-inner);min-height:44px;padding:0 12px;width:100%;transition:border-color var(--d2),box-shadow var(--d2)}
+input:focus,select:focus{outline:none;border-color:var(--c1);box-shadow:0 0 0 3px var(--glow)}
+label.field{display:block;color:var(--muted);font-size:.9rem;margin:10px 0 6px}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.item{display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:var(--r-inner);padding:10px 12px;animation:rise var(--d2) var(--ease) both}
+.item .t{flex:1;min-width:0;overflow-wrap:anywhere}
+.item.done .t{text-decoration:line-through;color:var(--muted)}
+.check{width:34px;height:34px;min-height:34px;padding:0;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid var(--c1);background:transparent;color:var(--c1);cursor:pointer;transition:background var(--d2) var(--ease),transform var(--d1) var(--spring)}
+.check.on{background:linear-gradient(120deg,var(--c1),var(--c2));color:#031417;border-color:transparent}
+.check:active{transform:scale(.88)}
+.bar{height:10px;border-radius:10px;background:var(--surface2);overflow:hidden;margin:8px 0 4px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--c1),var(--c2));border-radius:10px;transition:width var(--d3) var(--ease)}
+.moods{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mic{width:76px;height:76px;border-radius:50%;border:0;color:#031417;background:linear-gradient(120deg,var(--c1),var(--c2));display:grid;place-items:center;cursor:pointer;
+  box-shadow:0 10px 30px -8px var(--glow);transition:transform var(--d1) var(--spring);flex:none}
+.mic:active{transform:scale(.92)}
+.mic.live{animation:pulse 1.2s ease-out infinite}
+.mic[hidden]{display:none}
+.voicebar{display:flex;align-items:center;gap:12px;margin-top:10px}
+.voicebar .muted{flex:1}
+.note{background:rgba(251,191,36,.08);border-left:3px solid #fbbf24;padding:10px 12px;border-radius:var(--r-inner);font-size:.9rem;color:#fde68a}
+/* switches */
+.switch{position:relative;width:52px;height:30px;flex:none;border-radius:999px;background:var(--surface2);border:1px solid var(--line);cursor:pointer;transition:background var(--d2) var(--ease)}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3);transition:transform var(--d2) var(--spring)}
+.switch[aria-checked=true]{background:linear-gradient(120deg,var(--c1),var(--c2));border-color:transparent}
+.switch[aria-checked=true]::after{transform:translateX(22px)}
+.setting{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.setting:last-child{border-bottom:0}
+.setting .txt{flex:1;min-width:0}.setting .txt b{display:block;font-weight:600}.setting .txt span{color:var(--muted);font-size:.85rem}
+.themes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+.theme{border:2px solid transparent;border-radius:var(--r-inner);padding:8px;background:var(--surface2);cursor:pointer;color:var(--text);font:600 .8rem system-ui;display:grid;gap:6px;justify-items:center}
+.theme[aria-pressed=true]{border-color:var(--c1)}
+.swatch{width:100%;height:28px;border-radius:calc(var(--r-inner) - 4px);background:linear-gradient(120deg,var(--c1),var(--c2))}
+nav.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:var(--surface);border-top:1px solid var(--line);padding:8px 8px calc(var(--safe-bottom) + 8px);position:relative;z-index:1}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;min-height:52px;border-radius:var(--r-inner);color:var(--muted);font-size:.72rem;font-weight:600;background:none;border:0;padding:6px 0;cursor:pointer;transition:color var(--d2),background var(--d2)}
+.tab.on{color:var(--text);background:var(--surface2)}
+.tab.on .ic{color:var(--c1);transform:translateY(-1px)}
+.tab .ic{transition:transform var(--d2) var(--spring)}
+.toast{position:fixed;left:50%;bottom:calc(var(--safe-bottom) + 90px);transform:translate(-50%,14px) scale(.98);opacity:0;max-width:90vw;background:var(--surface2);
+  border:1px solid var(--line);border-radius:var(--r-outer);padding:12px 16px;box-shadow:0 18px 40px -12px #000;transition:opacity var(--d2) var(--ease),transform var(--d2) var(--spring);pointer-events:none;z-index:9;white-space:pre-wrap}
+.toast.on{opacity:1;transform:translate(-50%,0) scale(1)}
+.toast.err{border-color:rgba(248,113,113,.5);color:#fecaca}
+.section-title{margin:14px 4px 8px;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 var(--glow)}100%{box-shadow:0 0 0 22px transparent}}
+/* Calm mode and reduced motion switch every animation off */
+html.calm *,html.calm *::before,html.calm *::after{animation:none!important;transition:none!important}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+@media (min-width:700px){body{border-left:1px solid var(--line);border-right:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div class="app">
+<header>
+  <div class="brand"><div class="orb" aria-hidden="true"></div>Buddy</div>
+  <span id="status" class="pill" role="status" aria-live="polite">On this phone</span>
+  <button class="iconbtn" id="openMore" aria-label="Settings and cloud">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+  </button>
+</header>
+
+<main id="main">
+  <!-- HOME: Buddy talks -->
+  <section class="view on" id="v-home" aria-label="Home">
+    <div class="card">
+      <div class="hero"><div class="big" id="bigOrb" aria-hidden="true"></div>
+        <div><h2 id="greet" style="margin:0 0 2px">Hello</h2><div class="muted" id="today"></div></div></div>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="card">
+      <h2>Talk to Buddy</h2>
+      <div class="chat" id="chat" aria-live="polite"></div>
+      <div class="chips" id="quick"></div>
+      <form id="chatForm" class="row" style="margin-top:10px">
+        <input id="chatText" placeholder="Type, or tap the mic" aria-label="Message to Buddy" autocomplete="off" enterkeyhint="send" maxlength="500">
+        <button class="btn primary" type="submit" aria-label="Send" style="min-width:48px;padding:0">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l16-8-6 16-2.5-6.5L4 12z"/></svg></button>
+      </form>
+      <div class="voicebar">
+        <button class="mic" id="micBtn" aria-label="Speak to Buddy" aria-pressed="false">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/></svg></button>
+        <div class="muted" id="voiceHint">Tap the mic and speak. Buddy answers in words too.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-tasks" aria-label="Tasks">
+    <div class="card"><h2>Add a task</h2>
+      <form id="taskForm" class="row"><input id="taskText" placeholder="What needs doing?" aria-label="Task" maxlength="200" autocomplete="off"><button class="btn primary" type="submit">Add</button></form></div>
+    <div class="card"><h2>Open tasks</h2><ul class="list" id="taskList"></ul><div class="bar"><i id="taskBar"></i></div><div class="muted" id="taskPct"></div></div>
+    <div class="card"><h2>Reminders</h2>
+      <form id="remForm" class="row"><input id="remText" placeholder="remind me at 18:00 to call mum" aria-label="Reminder" maxlength="200" autocomplete="off"><button class="btn primary" type="submit">Set</button></form>
+      <ul class="list" id="remList" style="margin-top:10px"></ul></div>
+  </section>
+
+  <section class="view" id="v-goals" aria-label="Goals">
+    <div class="card"><h2>New goal</h2>
+      <form id="goalForm">
+        <label class="field" for="goalTitle">What do you want to reach?</label>
+        <input id="goalTitle" placeholder="e.g. learn guitar" maxlength="120" autocomplete="off">
+        <label class="field" for="goalTarget">How many steps?</label>
+        <div class="row"><input id="goalTarget" type="number" min="1" max="999" value="10" inputmode="numeric" style="max-width:110px"><button class="btn primary" type="submit" style="flex:1">Start goal</button></div>
+      </form></div>
+    <div class="card"><h2>Your goals</h2><ul class="list" id="goalList"></ul></div>
+  </section>
+
+  <section class="view" id="v-lists" aria-label="Lists">
+    <div class="card"><h2>Shopping</h2>
+      <form id="shopForm" class="row"><input id="shopText" placeholder="milk, eggs, bread" aria-label="Shopping item" maxlength="200" autocomplete="off"><button class="btn primary" type="submit">Add</button></form>
+      <ul class="list" id="shopList" style="margin-top:10px"></ul></div>
+    <div class="card"><h2>Notes</h2>
+      <form id="noteForm" class="row"><input id="noteText" placeholder="A quick note" aria-label="Note" maxlength="300" autocomplete="off"><button class="btn primary" type="submit">Save</button></form>
+      <ul class="list" id="noteList" style="margin-top:10px"></ul></div>
+  </section>
+
+  <section class="view" id="v-health" aria-label="Health">
+    <div class="card"><h2>Water today</h2>
+      <div class="bar"><i id="waterBar"></i></div>
+      <div class="row" style="justify-content:space-between"><span class="muted" id="waterText"></span><button class="btn primary" id="drinkBtn">+ 1 glass</button></div></div>
+    <div class="card"><h2>How do you feel?</h2><div class="moods" id="moods"></div><p class="muted" id="moodNote" style="margin:10px 0 0"></p></div>
+    <div class="card"><h2>Habits</h2>
+      <form id="habitForm" class="row"><input id="habitText" placeholder="study 30 minutes" aria-label="New habit" maxlength="80" autocomplete="off"><button class="btn primary" type="submit">Add</button></form>
+      <ul class="list" id="habitList" style="margin-top:10px"></ul></div>
+    <div class="note">Buddy is not a doctor. If you feel unsafe, contact someone you trust or local emergency services.</div>
+  </section>
+
+  <!-- MORE: settings, themes, voice, effects, cloud -->
+  <section class="view" id="v-more" aria-label="Settings">
+    <div class="card">
+      <h2>Voice</h2>
+      <div class="setting"><div class="txt"><b>Hear Buddy reply</b><span>Buddy speaks its answers aloud</span></div><button class="switch" role="switch" aria-checked="true" id="swVoiceOut" aria-label="Hear Buddy reply"></button></div>
+      <div class="setting"><div class="txt"><b>Speak to Buddy</b><span>Show the mic button</span></div><button class="switch" role="switch" aria-checked="true" id="swVoiceIn" aria-label="Speak to Buddy"></button></div>
+      <label class="field" for="voiceSel">Buddy's voice</label>
+      <select id="voiceSel"><option value="">Automatic (best on this phone)</option></select>
+      <label class="field" for="rateRange">Speed</label>
+      <input id="rateRange" type="range" min="0.7" max="1.2" step="0.05" value="0.98" style="padding:0;min-height:30px">
+      <div class="muted" id="voiceSupport" style="margin-top:8px"></div>
+      <button class="btn" id="testVoice" style="margin-top:10px">Test Buddy's voice</button>
+    </div>
+    <div class="card">
+      <h2>Look and feel</h2>
+      <div class="themes" id="themes">
+        <button class="theme" data-theme-pick="night" aria-pressed="false"><span class="swatch"></span>Night</button>
+        <button class="theme" data-theme-pick="teal" aria-pressed="false"><span class="swatch"></span>Teal</button>
+        <button class="theme" data-theme-pick="warm" aria-pressed="false"><span class="swatch"></span>Warm</button>
+        <button class="theme" data-theme-pick="light" aria-pressed="false"><span class="swatch"></span>Light</button>
+      </div>
+      <div class="setting" style="margin-top:8px"><div class="txt"><b>Ambient effects</b><span>Soft floating light behind the screen</span></div><button class="switch" role="switch" aria-checked="true" id="swFx" aria-label="Ambient effects"></button></div>
+      <div class="setting"><div class="txt"><b>Calm mode</b><span>No motion at all. Good for focus or sensitivity</span></div><button class="switch" role="switch" aria-checked="false" id="swCalm" aria-label="Calm mode"></button></div>
+      <div class="setting"><div class="txt"><b>Sounds and vibration</b><span>A soft tone and a buzz when you finish something</span></div><button class="switch" role="switch" aria-checked="true" id="swSfx" aria-label="Sounds and vibration"></button></div>
+    </div>
+    <div class="card">
+      <h2>Cloudflare cloud storage (optional)</h2>
+      <p class="muted">Your data is always saved on this phone. Cloud storage keeps a copy on Cloudflare so another phone can get it.</p>
+      <label class="field" for="cfMode">How to connect</label>
+      <select id="cfMode">
+        <option value="worker">My sync Worker (recommended)</option>
+        <option value="api">Cloudflare API token (direct)</option>
+      </select>
+      <div id="cfWorkerFields">
+        <label class="field" for="cfWorkerUrl">Worker address</label>
+        <input id="cfWorkerUrl" autocomplete="off" spellcheck="false" placeholder="https://buddy-sync.your-name.workers.dev">
+      </div>
+      <div id="cfApiFields" hidden>
+        <label class="field" for="cfAccount">Account ID</label>
+        <input id="cfAccount" autocomplete="off" spellcheck="false" placeholder="from the Cloudflare dashboard">
+        <label class="field" for="cfNamespace">KV Namespace ID</label>
+        <input id="cfNamespace" autocomplete="off" spellcheck="false" placeholder="from Workers KV">
+      </div>
+      <label class="field" for="cfToken" id="cfTokenLabel">Sync secret</label>
+      <input id="cfToken" type="password" autocomplete="off" spellcheck="false" placeholder="paste it here">
+      <div class="setting" style="margin-top:8px"><div class="txt"><b>Remember it on this phone</b><span>Leave off on a shared phone</span></div><button class="switch" role="switch" aria-checked="false" id="cfRemember" aria-label="Remember it on this phone"></button></div>
+      <div class="row" style="flex-wrap:wrap;margin-top:10px">
+        <button class="btn primary" id="cfSaveCfg">Save settings</button>
+        <button class="btn" id="cfTest">Test connection</button>
+        <button class="btn" id="cfPush">Save to cloud</button>
+        <button class="btn" id="cfPull">Load from cloud</button>
+        <button class="btn danger" id="cfForget">Forget token</button>
+      </div>
+      <p class="muted" id="cfResult" role="status" aria-live="polite" style="margin-top:12px"></p>
+    </div>
+    <div class="card">
+      <h2>Plan and share</h2>
+      <div class="row" style="flex-wrap:wrap"><button class="btn" id="icsBtn">Download calendar (.ics)</button><button class="btn" id="shareBtn">Share my summary</button><button class="btn" id="reviewBtn">Weekly review</button></div>
+      <p class="muted">The calendar file adds your open reminders to your phone's calendar app. Sharing opens your phone's share menu, or WhatsApp.</p>
+      <h2 style="margin-top:14px">Your skills</h2>
+      <ul class="list" id="skillList"></ul>
+    </div>
+    <div class="card">
+      <h2>Your data</h2>
+      <div class="row" style="flex-wrap:wrap"><button class="btn" id="exportBtn">Export a copy</button><button class="btn danger" id="resetBtn">Clear everything on this phone</button></div>
+      <p class="muted">Exporting saves a file you keep. Clearing removes the data from this phone only.</p>
+    </div>
+    <div class="note">Keep your sync secret or API token private. Buddy is a companion, not a medical or professional service.</div>
+  </section>
+</main>
+
+<nav class="tabs" aria-label="Main">
+  <button class="tab on" data-view="home"><svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</button>
+  <button class="tab" data-view="tasks"><svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.5"/></svg>Tasks</button>
+  <button class="tab" data-view="goals"><svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg>Goals</button>
+  <button class="tab" data-view="lists"><svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>Lists</button>
+  <button class="tab" data-view="health"><svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10A4.2 4.2 0 0 1 12 7.6 4.2 4.2 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/></svg>Health</button>
+</nav>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="logic.js"></script>
+<script src="plus.js"></script>
+<script src="cloud.js"></script>
+<script src="voice.js"></script>
+<script src="vfx.js"></script>
+<script src="icons.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

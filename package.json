@@ -1,0 +1,10 @@
+{
+  "name": "buddy-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Buddy for phones: tasks, lists, water and mood, with optional Cloudflare storage.",
+  "scripts": {
+    "test": "node --test test/logic.test.mjs test/cloud.test.mjs test/worker.test.mjs test/sync.test.mjs test/v2.test.mjs test/fuzz.test.mjs test/plus.test.mjs test/regressions.test.mjs"
+  },
+  "license": "UNLICENSED"
+}
