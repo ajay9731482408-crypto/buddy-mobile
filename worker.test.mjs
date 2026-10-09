@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import worker from "../worker/worker.js";
+import worker from "./worker.js";
 
 const SECRET = "sync-secret-0123456789abcdef";
 const APP = "https://me.github.io/buddy-mobile";

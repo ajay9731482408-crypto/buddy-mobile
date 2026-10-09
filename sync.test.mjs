@@ -2,10 +2,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import worker from "../worker/worker.js";
+import worker from "./worker.js";
 const require = createRequire(import.meta.url);
-const L = require("../logic.js");
-const C = require("../cloud.js");
+const L = require("./logic.js");
+const C = require("./cloud.js");
 
 const SECRET = "sync-secret-0123456789abcdef";
 const APP = "https://me.github.io/buddy-mobile";

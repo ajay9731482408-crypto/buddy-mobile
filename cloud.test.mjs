@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
-const C = require("../cloud.js");
+const C = require("./cloud.js");
 const cfg = { accountId: "acc 1", namespaceId: "ns/1", token: "SECRET-TOKEN" };
 const reply = (status, body = "") => async () => ({ status, ok: status >= 200 && status < 300, text: async () => body });
 

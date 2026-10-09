@@ -1,5 +1,7 @@
 # Buddy Mobile
 
+> **New to this?** Read **[START_HERE.md](START_HERE.md)** first. It is a step-by-step guide from zero to Buddy on your phone.
+
 Buddy is a companion for your phone. It keeps your **tasks, goals, reminders, habits, shopping and notes**, tracks **water and mood**, and answers simple commands by **text or voice**. It works offline once it has loaded, installs to your home screen, and can keep a copy of your data in **Cloudflare** so another phone can load it.
 
 - Works in any modern phone browser (Chrome, Edge, Safari)
@@ -95,7 +97,7 @@ You need a free Cloudflare account. Use **method A**. It works on phones in ever
 
 ### Method A: your own sync Worker (recommended)
 1. **Create storage.** Cloudflare dashboard → **Storage & Databases** (or **Workers & Pages**) → **KV** → **Create a namespace**. Name it `buddy-mobile`.
-2. **Create the Worker.** **Workers & Pages** → **Create** → **Create Worker**. Name it `buddy-sync` and click **Deploy**. Then **Edit code**, delete the sample code, paste the whole of `worker/worker.js`, and **Deploy**.
+2. **Create the Worker.** **Workers & Pages** → **Create** → **Create Worker**. Name it `buddy-sync` and click **Deploy**. Then **Edit code**, delete the sample code, paste the whole of `worker.js`, and **Deploy**.
 3. **Connect the storage.** In the Worker, go to **Settings → Bindings → Add → KV namespace**. Variable name: `BUDDY_KV`. Namespace: `buddy-mobile`. Save.
 4. **Set two secrets.** **Settings → Variables and Secrets → Add**:
    - `SYNC_SECRET`: a random text of at least 24 characters. Make one with `openssl rand -base64 24`, or any password generator. This is the text you type into the app. Keep it private.
@@ -225,15 +227,15 @@ voice.js              speech input and output (Web Speech API)
 vfx.js                ambient particle effect (capped, paused in the background)
 icons.js              one SVG icon set
 cloud.js              cloud storage client (sync Worker, and direct API)
-worker/worker.js      the sync Worker, deployed on Cloudflare
+worker.js      the sync Worker, deployed on Cloudflare
 sw.js                 offline support (caches the app shell)
 manifest.webmanifest  home-screen install settings and shortcuts
 vercel.json           Vercel caching and security headers
 .vercelignore         keeps tests and the Worker out of the live site
-icons/                app icons
-docs/RESOURCES.md     sources and design rules
-docs/ROADMAP.md       what is built, what is tested, and what is still to do
-test/                 tests
+icon-192.png, icon-512.png, apple-touch-icon.png   app icons
+RESOURCES.md     sources and design rules
+ROADMAP.md       what is built, what is tested, and what is still to do
+*.test.mjs           tests (run with npm test)
 ```
 
 ---
@@ -242,6 +244,6 @@ test/                 tests
 
 - **Reminders ring only while the app is open.** Reminders when the app is closed need push notifications from a server, which is not part of this version.
 - **Voice quality** depends on the voices your phone has. Some phones sound more natural than others.
-- **No language model yet.** Buddy answers from fixed rules. A conversation with a language model, a natural cloud voice and goal planning are listed in `docs/ROADMAP.md`, with what each needs.
+- **No language model yet.** Buddy answers from fixed rules. A conversation with a language model, a natural cloud voice and goal planning are listed in `ROADMAP.md`, with what each needs.
 - **Not yet connected to other services:** Google Calendar, Google Tasks, Notion, email, weather and news. Each needs its own sign-in or key.
 - **Tested here:** the logic, the sync, the Worker's rules and the screens in a phone-sized browser. Not tested here: a live Vercel deployment, a live Cloudflare Worker, the microphone and spoken voice on a real phone, and installing to a home screen. Try those on your phone first.

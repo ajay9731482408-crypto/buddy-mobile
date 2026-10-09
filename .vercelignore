@@ -1,5 +1,4 @@
-test/
-docs/
-worker/
+*.test.mjs
+worker.js
 node_modules/
 *.zip

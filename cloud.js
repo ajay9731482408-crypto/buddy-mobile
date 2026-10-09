@@ -33,7 +33,7 @@
     return method === 'GET' ? await res.text() : true;
   }
 
-  /* Worker mode: your own sync Worker (see worker/worker.js). Recommended on phones, because browsers
+  /* Worker mode: your own sync Worker (see worker.js). Recommended on phones, because browsers
      always accept its answers, while direct API calls can be refused by the browser. */
   async function workerCall(cfg, method, body, fetchFn) {
     const base = String(cfg.workerUrl || '').replace(/\/+$/, '');

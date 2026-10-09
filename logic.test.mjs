@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
-const L = require("../logic.js");
+const L = require("./logic.js");
 const NOW = "2026-10-09T10:00:00.000Z";
 const run = (s, t, now = NOW) => L.handle(s, t, now);
 

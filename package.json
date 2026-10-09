@@ -4,7 +4,7 @@
   "private": true,
   "description": "Buddy for phones: tasks, lists, water and mood, with optional Cloudflare storage.",
   "scripts": {
-    "test": "node --test test/logic.test.mjs test/cloud.test.mjs test/worker.test.mjs test/sync.test.mjs test/v2.test.mjs test/fuzz.test.mjs test/plus.test.mjs test/regressions.test.mjs"
+    "test": "node --test logic.test.mjs cloud.test.mjs worker.test.mjs sync.test.mjs v2.test.mjs fuzz.test.mjs plus.test.mjs regressions.test.mjs"
   },
   "license": "UNLICENSED"
 }

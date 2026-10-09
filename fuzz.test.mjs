@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
-const L = require("../logic.js");
+const L = require("./logic.js");
 test("random and hostile input never throws and always returns a reply", () => {
   let seed = 42; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
   const chars = "abcdefghijklmnopqrstuvwxyz 0123456789#:,.!?'\"<>&;%$/\\\n\t🙂日本";

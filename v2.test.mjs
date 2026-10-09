@@ -2,10 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
-const L = require("../logic.js");
-const V = require("../voice.js");
-const FX = require("../vfx.js");
-const I = require("../icons.js");
+const L = require("./logic.js");
+const V = require("./voice.js");
+const FX = require("./vfx.js");
+const I = require("./icons.js");
 const NOW = "2026-10-09T08:00:00Z";
 const run = (s, t) => L.handle(s, t, NOW);
 
