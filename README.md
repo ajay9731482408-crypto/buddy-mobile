@@ -206,7 +206,7 @@ Theme, voice and effect settings are kept on each phone and are not synced, so e
 npm test
 ```
 
-This runs 58 tests without any network connection:
+This runs 64 tests without any network connection:
 - commands and the data rules (tasks, lists, goals, water, mood, habits, reminders, routines, reviews, skills, calendar file, sharing)
 - the Cloudflare storage client, including the messages for common errors
 - the sync Worker's security rules (secret, origin, data checks, storage binding)
@@ -226,6 +226,7 @@ plus.js               reminders, habits, routines, reviews, skills, calendar, sh
 voice.js              speech input and output (Web Speech API)
 vfx.js                ambient particle effect (capped, paused in the background)
 icons.js              one SVG icon set
+avatar.js             Buddy's avatar: its face, pointer tracking, taps and moods
 cloud.js              cloud storage client (sync Worker, and direct API)
 worker.js      the sync Worker, deployed on Cloudflare
 sw.js                 offline support (caches the app shell)

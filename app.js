@@ -43,6 +43,43 @@
     } catch (e) { }
   }
 
+  /* ---------- Buddy's avatar: one drawing, several places ---------- */
+  function mountAvatar(el) {
+    if (!el) return null;
+    let s = BuddyAvatar.initial(), eye = { x: 0, y: 0 }, timer = 0;
+    const draw = () => { el.innerHTML = BuddyAvatar.svg(s.state, eye); el.dataset.state = s.state; };
+    draw();
+    const api = {
+      set(name) { clearTimeout(timer); s = BuddyAvatar.set(s, name); draw(); },
+      // show a state for a moment, then return to idle (used for replies, reminders and thinking)
+      hold(name, ms) { api.set(name); timer = setTimeout(() => api.set('idle'), ms || 1800); },
+      reply(mood) { s = BuddyAvatar.reply(s, mood); draw(); clearTimeout(timer); timer = setTimeout(() => api.set('idle'), 2200); },
+      tap() {
+        s = BuddyAvatar.tap(s, Date.now()); draw();
+        setTimeout(() => { s = BuddyAvatar.settle(s, Date.now()); draw(); }, s.state === 'dizzy' ? BuddyAvatar.DIZZY_FOR + 60 : 350);
+      },
+      look(px, py) {
+        // the pupils move on their own, so blinking and the pose stay smooth while the pointer moves
+        const r = el.getBoundingClientRect(); if (!r.width) return;
+        eye = BuddyAvatar.eyeOffset(px, py, r.left + r.width / 2, r.top + r.height / 2);
+        el.querySelectorAll('[data-bx]').forEach((n) => {
+          n.setAttribute('cx', (Number(n.dataset.bx) + eye.x * 1).toFixed(2));
+          n.setAttribute('cy', (Number(n.dataset.by) + eye.y * 1).toFixed(2));
+        });
+      },
+    };
+    return api;
+  }
+  const avatars = [mountAvatar($('avatarBig')), mountAvatar($('avatarSmall'))].filter(Boolean);
+  const bigAvatar = avatars[0];
+  let lookQueued = false, lastPointer = null;
+  document.addEventListener('pointermove', (e) => {
+    lastPointer = { x: e.clientX, y: e.clientY };
+    if (lookQueued) return; lookQueued = true;
+    requestAnimationFrame(() => { lookQueued = false; if (lastPointer) avatars.forEach((a) => a.look(lastPointer.x, lastPointer.y)); });
+  }, { passive: true });
+  if ($('avatarBig')) $('avatarBig').addEventListener('click', () => { if (bigAvatar) bigAvatar.tap(); });
+
   /* ---------- sound (a tiny generated tone; no audio files) ---------- */
   let audioCtx = null;
   function beep() {
@@ -90,10 +127,10 @@
   function ask(text) {
     const v = String(text || '').trim(); if (!v) return;
     addMsg('u', v);
-    const big = $('bigOrb'); big.classList.add('think');
+    if (bigAvatar) bigAvatar.set('thinking');
     setTimeout(() => {
       const r = run(v);
-      big.classList.remove('think');
+      if (bigAvatar) bigAvatar.reply(r.mood);
       addMsg('b', r.reply);
       if (prefs.voiceOut) V.speak(r.reply, { rate: prefs.rate, voiceName: prefs.voiceName });
       renderHome();
@@ -112,7 +149,7 @@
   function toggleMic() {
     if (!V.support().listen) { toast('Voice input needs Chrome, Edge or Safari on a phone. You can type instead.', true); return; }
     if (recog) { try { recog.abort(); } catch (e) { } recog = null; setMic(false); return; }
-    setMic(true);
+    setMic(true); if (bigAvatar) bigAvatar.set('listening');
     recog = V.listen({
       lang: 'en-GB',
       onText: (t) => { ask(t); },
@@ -128,7 +165,7 @@
       onEnd: () => { setMic(false); recog = null; },
     });
   }
-  function setMic(on) { const b = $('micBtn'); b.classList.toggle('live', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+  function setMic(on) { const b = $('micBtn'); b.classList.toggle('live', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); if (!on && bigAvatar) bigAvatar.set('idle'); }
 
   /* ---------- tasks ---------- */
   function renderTasks() {
@@ -378,7 +415,7 @@
     for (const r of due) {
       state.notified.push(r.id); saveLocal();
       const msg = 'Reminder: ' + r.text;
-      toast(msg); addMsg('b', msg);
+      toast(msg); addMsg('b', msg); if (bigAvatar) bigAvatar.hold('alert', 6000);
       if (prefs.sfx) beep(); buzz([40, 60, 40]);
       if (prefs.voiceOut) V.speak(msg, { rate: prefs.rate, voiceName: prefs.voiceName });
     }

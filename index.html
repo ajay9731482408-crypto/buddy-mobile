@@ -118,13 +118,34 @@ nav.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:var
 html.calm *,html.calm *::before,html.calm *::after{animation:none!important;transition:none!important}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 @media (min-width:700px){body{border-left:1px solid var(--line);border-right:1px solid var(--line)}}
+/* ---- Buddy's avatar ---- */
+.avatar{--av:64px;width:var(--av);height:var(--av);flex:none;position:relative;animation:float 4.5s ease-in-out infinite;transition:transform var(--d2) var(--spring)}
+.avatar.big{--av:150px}
+.avatar.small{--av:34px}
+.avatar svg{width:100%;height:100%;overflow:visible;display:block}
+.avatar .eyes{transform-box:fill-box;transform-origin:center;animation:blink 5.5s infinite}
+.avatar .body{filter:drop-shadow(0 10px 22px var(--glow))}
+.avatar .ring{transform-box:view-box;transform-origin:50% 50%;animation:spin 3s linear infinite}
+.avatar[data-state=squish]{transform:scale(1.08,.9)}
+.avatar[data-state=happy]{animation:hop .7s var(--spring) 2}
+.avatar[data-state=listening] .body{filter:drop-shadow(0 0 16px var(--c1))}
+.avatar[data-state=worried] .body{filter:saturate(.7) drop-shadow(0 10px 22px var(--glow))}
+.avatar[data-state=alert]{animation:bounce .5s var(--spring) 4}
+.avatar[data-state=dizzy]{animation:wobble .4s ease-in-out infinite}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes hop{0%,100%{transform:translateY(0)}40%{transform:translateY(-14px)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes wobble{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}
+html.calm .avatar,html.calm .avatar *{animation:none!important;transition:none!important}
+@media (prefers-reduced-motion:reduce){.avatar,.avatar *{animation:none!important}}
 </style>
 </head>
 <body>
 <canvas id="fx" aria-hidden="true"></canvas>
 <div class="app">
 <header>
-  <div class="brand"><div class="orb" aria-hidden="true"></div>Buddy</div>
+  <div class="brand"><div class="avatar small" id="avatarSmall" aria-hidden="true"></div>Buddy</div>
   <span id="status" class="pill" role="status" aria-live="polite">On this phone</span>
   <button class="iconbtn" id="openMore" aria-label="Settings and cloud">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
@@ -135,7 +156,7 @@ html.calm *,html.calm *::before,html.calm *::after{animation:none!important;tran
   <!-- HOME: Buddy talks -->
   <section class="view on" id="v-home" aria-label="Home">
     <div class="card">
-      <div class="hero"><div class="big" id="bigOrb" aria-hidden="true"></div>
+      <div class="hero"><div class="avatar big" id="avatarBig" role="img" aria-label="Buddy, your companion"></div>
         <div><h2 id="greet" style="margin:0 0 2px">Hello</h2><div class="muted" id="today"></div></div></div>
       <div class="stats" id="stats"></div>
     </div>
@@ -282,6 +303,7 @@ html.calm *,html.calm *::before,html.calm *::after{animation:none!important;tran
 <script src="voice.js"></script>
 <script src="vfx.js"></script>
 <script src="icons.js"></script>
+<script src="avatar.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

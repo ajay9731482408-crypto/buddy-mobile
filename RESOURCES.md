@@ -25,3 +25,14 @@ What this means in the app: voice input and output are optional switches. If a b
 ## Possible next steps (not built)
 - A cloud voice (Gemini or another text-to-speech service) for a more natural voice, using a key stored only on your device or your own Worker.
 - Reminders that fire at a set time (needs notification permission and is less reliable in browsers than in an installed app).
+
+
+## Avatar (Buddy's face)
+Buddy's avatar is an original drawing built for this app. Ideas that informed the behaviour, and how each was handled:
+
+- **Louis-CFM/coucou** (github.com/Louis-CFM/coucou, a macOS notch companion called Mochi). Its code is MIT-licensed, but its README states that the name, the Mochi character, the icon and the sounds are © the author, all rights reserved. What was used: the *ideas* only. The eyes follow the pointer, a tap squishes the face, repeated taps make it dizzy, and it reacts to what is happening. Nothing from that project's code, art, sounds or name was copied, and Buddy's face is drawn from scratch.
+- **Pointer events** (MDN, "Pointer events"): the pointer position is read from `pointermove`, and updates are batched with `requestAnimationFrame` so movement stays smooth.
+- **Reduced motion** (MDN, `prefers-reduced-motion`): all avatar animation is switched off when the phone asks for reduced motion, and in Calm mode.
+- **SVG** (MDN, "SVG"): the face is a single vector drawing, so it is sharp at any size and light to redraw.
+
+Why this matters: if you ever publish Buddy, use your own name, character and artwork, and read the licence of any project you learn from.
