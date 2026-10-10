@@ -1,8 +1,8 @@
 /* Offline support. Network first: when the phone is online it always gets the newest files, and it saves a copy.
    When it is offline it uses the saved copy. Cloud calls go to another address and are never cached.
    Bump V when the list of files changes, so old caches are removed. */
-const V = 'buddy-mobile-v5';
-const SHELL = ['./', './index.html', './logic.js', './plus.js', './cloud.js', './voice.js', './vfx.js', './icons.js', './avatar.js', './app.js',
+const V = 'buddy-mobile-v10';
+const SHELL = ['./', './index.html', './logic.js', './plus.js', './cloud.js', './voice.js', './vfx.js', './icons.js', './avatar.js', './agent.js', './notch.js', './kokoro-voice.js', './app.js',
   './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 // Cache each file on its own: one missing file (for example an icon that did not upload) must not stop the rest.
 self.addEventListener('install', (e) => e.waitUntil(caches.open(V).then((c) => Promise.all(SHELL.map((u) =>

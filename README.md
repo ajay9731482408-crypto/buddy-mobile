@@ -130,7 +130,7 @@ Type into the chat on **Home**, tap a shortcut chip, or tap the **mic** and spea
 | `remind me at 18:00 to call mum` | A reminder at 18:00 (or the next 18:00) |
 | `remind me in 30 minutes to stretch` | A reminder in 30 minutes |
 | `remind me tomorrow 9am to take tablets` | A reminder for tomorrow morning |
-| `reminders` · `done reminder 3` | List reminders, or finish one |
+| `reminders` · `done reminder 3` · `snooze reminder 3` | List reminders, finish one, or ring again in 10 minutes |
 | `add shopping milk, eggs` · `shopping` · `bought milk` | The shopping list |
 | `note remember the gate code` | A quick note |
 | `goal learn guitar 20 steps` | A goal with a number of steps |
@@ -146,6 +146,8 @@ Type into the chat on **Home**, tap a shortcut chip, or tap the **mic** and spea
 | `help` | The list of commands |
 
 Words are understood in several ways: `todo`, `completed`, `buy` and `cups` all work. Only the first word of a message is changed, so the words of your own tasks and notes stay exactly as you typed them.
+
+**The notch** is the pill at the top of the screen. It shows Buddy thinking, a quick ✓ or ! after each reply, and due reminders with **Done** and **Snooze 10m** buttons. Tap it to open quick actions.
 
 **Reminders** are announced while the app is open. The app checks every 30 seconds, announces each reminder once, and shows it as a message, with a tone and a buzz if those are on. Reminders do **not** ring when the app is fully closed (see section 11).
 
@@ -206,7 +208,7 @@ Theme, voice and effect settings are kept on each phone and are not synced, so e
 npm test
 ```
 
-This runs 64 tests without any network connection:
+This runs 155 tests without any network connection:
 - commands and the data rules (tasks, lists, goals, water, mood, habits, reminders, routines, reviews, skills, calendar file, sharing)
 - the Cloudflare storage client, including the messages for common errors
 - the sync Worker's security rules (secret, origin, data checks, storage binding)
@@ -227,6 +229,11 @@ voice.js              speech input and output (Web Speech API)
 vfx.js                ambient particle effect (capped, paused in the background)
 icons.js              one SVG icon set
 avatar.js             Buddy's avatar: its face, pointer tracking, taps and moods
+kokoro-voice.js       the free voice: Kokoro, run in the browser (no keys)
+notch.js              the notch: a pill at the top that shows what Buddy is doing, with Done and Snooze for reminders
+agent.js              the smart agent (phone side): tools, checks, the tool loop
+worker.js             sync, agent and voice routes (Amazon Polly or Gemini, with AWS request signing); stores data in Supabase or Cloudflare KV
+supabase/schema.sql   the Supabase table for Buddy's data (locked to the public key)
 cloud.js              cloud storage client (sync Worker, and direct API)
 worker.js      the sync Worker, deployed on Cloudflare
 sw.js                 offline support (caches the app shell)
@@ -245,6 +252,6 @@ ROADMAP.md       what is built, what is tested, and what is still to do
 
 - **Reminders ring only while the app is open.** Reminders when the app is closed need push notifications from a server, which is not part of this version.
 - **Voice quality** depends on the voices your phone has. Some phones sound more natural than others.
-- **No language model yet.** Buddy answers from fixed rules. A conversation with a language model, a natural cloud voice and goal planning are listed in `ROADMAP.md`, with what each needs.
+- **The smart agent and natural voice are optional.** They need your own keys on your Worker (START_HERE, Part 7b). Built-in commands work without them.
 - **Not yet connected to other services:** Google Calendar, Google Tasks, Notion, email, weather and news. Each needs its own sign-in or key.
 - **Tested here:** the logic, the sync, the Worker's rules and the screens in a phone-sized browser. Not tested here: a live Vercel deployment, a live Cloudflare Worker, the microphone and spoken voice on a real phone, and installing to a home screen. Try those on your phone first.

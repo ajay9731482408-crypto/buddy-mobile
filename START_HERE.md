@@ -137,7 +137,8 @@ Buddy has five tabs at the bottom: **Home, Tasks, Goals, Lists, Health**. The ge
    - `remind me in 30 minutes to stretch`
    - `remind me at 18:00 to call mum`
    - `remind me tomorrow 9am to take tablets`
-3. Keep the app open. When a reminder is due, Buddy shows it in the chat (and speaks it if you turned that on).
+3. Keep the app open. When a reminder is due, it appears in the **notch** at the top of the screen with two buttons: **Done** (marks it finished) and **Snooze 10m** (rings again in ten minutes). Buddy also writes it in the chat and speaks it if you turned that on.
+4. The notch also shows when Buddy is thinking, and gives a quick check mark or warning after each reply. Tap it to open quick actions.
 
 **Important:** reminders only ring while the app is open. Keep Buddy open, or in the background, for them to work.
 
@@ -253,6 +254,83 @@ Items added on either phone are kept on both.
 
 ---
 
+## Part 7c: Store your Buddy data in Supabase (optional, about 20 minutes)
+
+Supabase is a hosted Postgres database with a free tier. Buddy can keep its cloud copy there instead of Cloudflare KV. The phone app does not change: only the Worker's storage changes.
+
+**Keep Buddy's data in its own Supabase project.** Do not put it in a project that holds a shop or another app's data.
+
+1. **Your project is ready:** `buddy-mobile` (region ap-southeast-2, Sydney) under the `aa-ethnic-studio` organization. Its **Project URL** is `https://pfsyyuumvmvewtzzhsgx.supabase.co`. This address is not a secret. Your shop's project (`aa.ethnic-studio`) is separate and is not used by Buddy.
+2. **The table is already created** (`buddy_kv`, with row-level security on). If you ever need to recreate it, paste **supabase/schema.sql** into the SQL Editor and click **Run**. Supabase's security check reports that the table has RLS but no policies. That is intended: the public key cannot read or write it, and only the Worker's service key can.
+3. **Copy the service key.** In **Project Settings → API**, copy the **service_role** secret. It is powerful: keep it secret, and never put it in the app or in chat.
+4. **Add two secrets to the Worker** (**buddy-sync → Settings → Variables and Secrets**):
+   - `SUPABASE_URL`: the Project URL from step 1 (as text, no slash at the end).
+   - `SUPABASE_SERVICE_KEY`: the service_role key from step 3.
+   Click **Deploy**. From now on the Worker stores your sync copy and daily counts in Supabase. If you remove these two secrets, it goes back to Cloudflare KV.
+5. **Check it.** Open Buddy → Settings → **Test connection**, then **Save to cloud**. In the Supabase **Table Editor**, the `buddy_kv` table should show a row called `state`.
+
+**Keeping it safe:** the service key bypasses the table's protection, so it lives only in the Worker's secrets. Rotate it in Project Settings → API if you ever suspect it leaked. Backups: Supabase keeps daily backups on paid plans; on the free plan, keep your own export (Settings → Your data → Export a copy).
+
+## Part 7b: Smart agent and natural voice (optional, about 20 minutes)
+
+These two features run on **your** Worker (Part 7), so your keys stay on Cloudflare and never reach the phone. Both are off until you switch them on, and you pay the providers directly for what you use. Set a daily limit (step 4) so costs stay small.
+
+1. **Get the keys** (choose what you want):
+   - **Smart agent (Claude):** create an API key at console.anthropic.com. Copy it.
+   - **Natural voice (Google Gemini):** create a key at aistudio.google.com (the same steps as START_HERE Part C4). Copy it.
+   Keep both private, like the sync secret.
+2. **Redeploy the Worker.** Open **buddy-sync**, click **Edit code**, delete the old code, paste the new **worker.js** from the project, and **Deploy**. Keep the same KV binding and secrets from Part 7.
+3. **Add the keys as secrets** (**Settings → Variables and Secrets → Add → Secret**):
+   - `ANTHROPIC_API_KEY`: your Claude key.
+   - `GEMINI_API_KEY`: your Gemini key.
+   Click **Deploy** again.
+4. **Set limits and choices** (optional, **Variables**, not secret):
+   - `AGENT_DAILY_LIMIT`: how many agent and voice calls per day in total. Start with `200`.
+   - `AGENT_MODEL`: the Claude model name. Default `claude-haiku-5-5` (fast and inexpensive). Use a larger model if you want deeper answers.
+   - `GEMINI_VOICE`: the voice name. Default `Kore`. Try others from Google's list of Gemini speech voices and keep the one you like.
+   - `GEMINI_TTS_MODEL`: optional. The default is the newest speech model, with an automatic fallback.
+5. **Turn them on in the app.** Open **Settings** and turn on **Smart agent** and/or **Natural voice**. Both need the cloud connection from Part 7 to be working (**Test connection** shows Connected).
+6. **Try it.** The agent now uses **tools**: it can add tasks, complete them, add shopping, start and move goals, set reminders, log water and mood, and give your summary. Each tool is checked on your phone before it runs, and nothing can be deleted. Ask in plain words, for example `remind me in 30 minutes to stretch` or `I drank three glasses, and I feel tired`. Type something Buddy does not have a command for, such as `what should I focus on today?`. Buddy answers in its own words and can add tasks or set reminders for you. Built-in commands (such as `add task …` or `good morning`) work the same way with or without the agent.
+
+**What to know**
+- **Privacy:** while the agent is on, your chat text and a short summary of your tasks and goals are sent to Anthropic. While natural voice is on, the words Buddy speaks are sent to Google. Turn either switch off to stop.
+- **Limits:** the agent only runs commands from Buddy's own list. It cannot delete anything or reach other apps.
+- **Voice on iPhone:** Safari may need one tap before it plays sound. If a reply is silent, tap the screen once and it will speak next time.
+- **If the agent is unavailable** (no key, limit reached, no internet), Buddy says so and keeps answering with its built-in commands.
+
+## Part 8a: The free voice on your phone (Kokoro): no keys, no card
+
+Buddy's default voice is **Kokoro**, a free, open-source voice model (Apache 2.0 licence). It runs inside your browser, so it needs no key, no card and no server.
+
+1. Open Buddy → **Settings** → **Voice**. Turn on **Natural voice**. **Natural voice made by** is already set to **Free on this phone (Kokoro)**.
+2. Pick a voice in **Natural voice** (for example **af heart**, or **am adam** for a male voice).
+3. Send Buddy a message. The **first** reply downloads the voice model. It is tens of megabytes, so use Wi-Fi the first time, and the notch shows **Loading Buddy's voice (first time)**.
+4. Later replies are quicker. Your browser keeps the downloaded files, so Kokoro usually works without internet afterwards. If it asks for internet again, connect once and it will be ready.
+
+**If the free voice cannot load** (no internet on the first use, or a browser that blocks it), Buddy says so and speaks with the phone's own voice instead.
+
+**Choosing a different engine:** Amazon Polly (Part 8b) and Google Gemini (Part 8) are still in the list. They need keys and the Worker.
+
+## Part 8b: Alexa-style voice with Amazon Polly (optional, about 20 minutes)
+
+Buddy's voice can now come from **Amazon Polly**, Amazon's text-to-speech service. Its "neural" voices use the same family of technology as Amazon's assistant voices. Amazon does not license its own Alexa voice to other apps, so Buddy uses Polly's voices instead. Gemini stays available as the other choice.
+
+**Before you start:** an AWS account needs a payment card to sign up. Check AWS's current Polly pricing and free-tier terms before you use it for many replies. The daily limit in Part 7b keeps use small.
+
+1. **Create an AWS account** at aws.amazon.com and sign in to the console.
+2. **Create a user for Buddy** (IAM → Users → Create user). Give it only the **AmazonPollyReadOnlyAccess** policy, or a policy that allows `polly:SynthesizeSpeech` and nothing else.
+3. **Create its access keys** (the user → Security credentials → Create access key). Copy the **Access key ID** and the **Secret access key**. Keep them private.
+4. **Add three things to the Worker** (buddy-sync → Settings → Variables and Secrets):
+   - `AWS_ACCESS_KEY_ID`: the Access key ID (secret).
+   - `AWS_SECRET_ACCESS_KEY`: the Secret access key (secret).
+   - `POLLY_REGION` (optional, text): default `us-east-1`. Use a region close to you if Polly is offered there.
+   Click **Deploy**. Paste the new **worker.js** from the project first if you have not already.
+5. **Choose the voice in the app.** Settings → Voice → **Natural voice made by: Amazon Polly**, then pick a voice (Joanna, Matthew, Salli, Joey or Ivy). Turn on **Natural voice**. Send Buddy a message and listen.
+
+**Which voice is used:** when the AWS keys are set, Polly is used by default. Choose **Google Gemini** in the same setting to use Gemini instead.
+
+**Honest note:** Polly neural voices sound natural and conversational, but they are not Amazon Alexa's own voice. How a voice sounds also depends on the phone's speaker.
+
 ## Part 8: Backups, calendar and sharing (5 minutes)
 
 - **Back up your data:** Settings → **Your data** → **Export a copy**. This saves a file to your phone's Downloads. Keep it somewhere safe, such as a cloud drive you trust.
@@ -316,7 +394,7 @@ Items added on either phone are kept on both.
 
 ## Part 13: Not built yet
 
-Buddy cannot yet: ring reminders when the app is closed; hold real conversations with a language model; use Google Calendar, Notion or email; show weather or news; or restore a backup file. See **ROADMAP.md** for what each one needs.
+Buddy cannot yet: ring reminders when the app is closed; use Amazon's own Alexa voice (not licensed to apps); store your data in more than one place at once; use Google Calendar, Notion or email; show weather or news; or restore a backup file. See **ROADMAP.md** for what each one needs.
 
 ---
 

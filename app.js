@@ -12,7 +12,7 @@
   let cloudOk = false, pushTimer = 0, recog = null, stopFx = null, currentView = 'home';
 
   /* ---------- preferences (this phone only) ---------- */
-  const DEFAULT_PREFS = { voiceOut: true, voiceIn: true, theme: 'night', fx: true, calm: !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches), sfx: true, rate: 0.98, voiceName: '' };
+  const DEFAULT_PREFS = { naturalVoice: false, agentOn: false, natEngine: 'kokoro', natVoice: 'af_heart', voiceOut: true, voiceIn: true, theme: 'night', fx: true, calm: !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches), sfx: true, rate: 0.98, voiceName: '' };
   function loadPrefs() { try { return Object.assign({}, DEFAULT_PREFS, JSON.parse(localStorage.getItem(PREF_KEY) || '{}')); } catch (e) { return Object.assign({}, DEFAULT_PREFS); } }
   function savePrefs() { try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch (e) { } }
 
@@ -42,6 +42,36 @@
       if (active && navigator.vibrate) navigator.vibrate(pattern);
     } catch (e) { }
   }
+
+  /* ---------- the notch: shows what Buddy is doing, reminders with Done and Snooze ---------- */
+  const notch = (window.BuddyNotch && $('notchHost')) ? BuddyNotch.mount($('notchHost'), { onAction: notchAction }) : null;
+  function notchAction(id) {
+    // ids look like "done:12", "snooze:12", "cmd:good morning", "agenda", "orders"
+    const [kind, arg] = String(id).split(/:(.*)/);
+    if (kind === 'done') { const r = run('done reminder ' + arg); toast(r.reply); renderTasks(); renderReminders(); }
+    else if (kind === 'snooze') { const r = run('snooze reminder ' + arg + ' 10'); toast(r.reply); renderReminders(); }
+    else if (kind === 'cmd') ask(arg);
+    else if (id === 'agenda') ask('good morning');
+    else if (id === 'orders') ask('shopping');
+  }
+  function notchWorking(label) { if (notch) notch.push({ type: 'work', label }); }
+  function notchResult(mood) {
+    if (!notch) return;
+    notch.push({ type: 'result', label: mood === 'worried' ? 'Something needs a look' : 'Done', tone: mood === 'worried' ? 'error' : 'ok' });
+  }
+  function notchAlert(text, reminderId) {
+    if (!notch) return;
+    notch.push({ type: 'alert', title: text.slice(0, 80), ms: 20000,
+      actions: [{ label: 'Done', id: 'done:' + reminderId }, { label: 'Snooze 10m', id: 'snooze:' + reminderId }] });
+  }
+
+  /* ---------- how Buddy reacts to the user (original code) ---------- */
+  function reactMistake(fieldId) {
+    const f = $(fieldId);
+    if (bigAvatar) bigAvatar.hold('worried', 1600);
+    if (f) { f.classList.remove('shake'); void f.offsetWidth; f.classList.add('shake'); f.focus(); }
+  }
+  function reactDone() { if (bigAvatar) bigAvatar.hold('happy', 1400); }
 
   /* ---------- Buddy's avatar: one drawing, several places ---------- */
   function mountAvatar(el) {
@@ -109,8 +139,19 @@
   }
 
   /* ---------- home ---------- */
+  function renderToday() {
+    const card = $('todayCard'); if (!card) return;
+    const next = state.reminders.filter((r) => !r.done && r.at >= Date.now()).sort((x, y) => x.at - y.at)[0];
+    const goal = state.goals.filter((g) => !g.done).sort((x, y) => (y.progress / y.target) - (x.progress / x.target))[0];
+    const open = state.tasks.filter((t) => !t.done).length;
+    card.innerHTML = '<p class="eyebrow">Today</p>' +
+      (next ? `<p class="t" style="margin:0 0 var(--s2)"><b>Next:</b> ${esc(next.text)} at ${esc(new Date(next.at).toTimeString().slice(0, 5))}</p>` : '<p class="lead" style="margin-top:0">No reminders coming up.</p>') +
+      (goal ? `<p style="margin:0 0 var(--s2)"><b>Focus:</b> ${esc(goal.title)} (${goal.progress} of ${goal.target})</p>` : '') +
+      `<p class="lead" style="margin-top:0">${open} open task${open === 1 ? '' : 's'}.</p>`;
+  }
   function renderHome() {
     const s = L.summary(state, now()), h = new Date().getHours();
+    renderToday();
     $('greet').textContent = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
     $('today').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
     const cells = [[s.openTasks, 'open tasks'], [s.goalsOpen, 'goals in progress'], [Math.round(s.waterMl / 250), 'glasses today'], [s.mood || '–', 'last mood']];
@@ -128,13 +169,22 @@
     const v = String(text || '').trim(); if (!v) return;
     addMsg('u', v);
     if (bigAvatar) bigAvatar.set('thinking');
-    setTimeout(() => {
-      const r = run(v);
-      if (bigAvatar) bigAvatar.reply(r.mood);
-      addMsg('b', r.reply);
-      if (prefs.voiceOut) V.speak(r.reply, { rate: prefs.rate, voiceName: prefs.voiceName });
-      renderHome();
-    }, 180);
+    notchWorking('Thinking');
+    // built-in commands first: fast, free, and they work offline. Anything else goes to the agent when it is on.
+    const probe = P.handleAll(state, v, Date.now());
+    const known = !/did not understand/.test(probe.reply);
+    if (known || !(prefs.agentOn && workerReady() && window.BuddyAgent)) {
+      setTimeout(() => {
+        const r = run(v);
+        if (bigAvatar) bigAvatar.reply(r.mood);
+        notchResult(r.mood);
+        addMsg('b', r.reply);
+        speakReply(r.reply);
+        renderHome();
+      }, 180);
+      return;
+    }
+    askAgent(v, probe);
   }
   function renderChatIntro() {
     if ($('chat').dataset.started) return;
@@ -172,8 +222,8 @@
     const s = L.summary(state, now());
     const open = state.tasks.filter((x) => !x.done);
     $('taskList').innerHTML = open.length ? open.map((x) =>
-      `<li class="item"><button class="check" data-done="${x.id}" aria-label="Mark done: ${esc(x.text)}"></button><span class="t">${esc(x.text)}</span></li>`).join('')
-      : '<li class="muted">No open tasks. Add one above.</li>';
+      `<li class="list-item"><button class="check" data-done="${x.id}" aria-label="Mark done: ${esc(x.text)}"></button><span class="t">${esc(x.text)}</span></li>`).join('')
+      : '<li class="sub">No open tasks. Add one above.</li>';
     $('taskBar').style.width = s.completion + '%';
     $('taskPct').textContent = `${s.completion}% of all tasks done`;
   }
@@ -182,39 +232,39 @@
     const open = state.reminders.filter((r) => !r.done).sort((x, y) => x.at - y.at);
     $('remList').innerHTML = open.length ? open.map((r) => {
       const when = new Date(r.at);
-      return `<li class="item"><button class="check" data-rdone="${r.id}" aria-label="Done: ${esc(r.text)}"></button><span class="t">${esc(r.text)}<div class="muted">${esc(when.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }))}</div></span></li>`;
-    }).join('') : '<li class="muted">No reminders. Try "remind me in 30 minutes to stretch".</li>';
+      return `<li class="list-item"><button class="check" data-rdone="${r.id}" aria-label="Done: ${esc(r.text)}"></button><span class="t">${esc(r.text)}<div class="sub">${esc(when.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }))}</div></span></li>`;
+    }).join('') : '<li class="sub">No reminders. Try "remind me in 30 minutes to stretch".</li>';
   }
   function renderHabits() {
     $('habitList').innerHTML = state.habits.length ? state.habits.map((h) => {
       const n = P.streak(h, Date.now());
-      return `<li class="item"><button class="btn" data-did="${h.id}" aria-label="I did ${esc(h.name)} today">Did it</button><span class="t">${esc(h.name)}<div class="muted">${n} day${n === 1 ? '' : 's'} in a row</div></span></li>`;
-    }).join('') : '<li class="muted">No habits yet. Add one, for example "study 30 minutes".</li>';
+      return `<li class="list-item"><button class="btn btn-sm" data-did="${h.id}" aria-label="I did ${esc(h.name)} today">Did it</button><span class="t">${esc(h.name)}<div class="sub">${n} day${n === 1 ? '' : 's'} in a row</div></span></li>`;
+    }).join('') : '<li class="sub">No habits yet. Add one, for example "study 30 minutes".</li>';
   }
   function renderSkills() {
     $('skillList').innerHTML = P.skills(state).map((k) =>
-      `<li class="item"><span class="t">${esc(k.name)}<div class="bar"><i style="width:${k.pct}%"></i></div><div class="muted">Level ${k.level} · ${k.pct}% to level ${k.level + 1}</div></span></li>`).join('');
+      `<li class="list-item"><span class="t">${esc(k.name)}<div class="bar"><i style="width:${k.pct}%"></i></div><div class="sub">Level ${k.level} · ${k.pct}% to level ${k.level + 1}</div></span></li>`).join('');
   }
   /* ---------- goals ---------- */
   function renderGoals() {
     const goals = state.goals.slice().sort((a, b) => Number(a.done) - Number(b.done) || b.id - a.id);
     $('goalList').innerHTML = goals.length ? goals.map((g) => {
       const pct = Math.round((g.progress / g.target) * 100);
-      return `<li class="item ${g.done ? 'done' : ''}" style="flex-wrap:wrap">
-        <div class="t"><b>${esc(g.title)}</b><div class="muted">${g.progress} of ${g.target} steps</div>
+      return `<li class="list-item ${g.done ? 'done' : ''}" style="flex-wrap:wrap">
+        <div class="t"><b>${esc(g.title)}</b><div class="sub">${g.progress} of ${g.target} steps</div>
         <div class="bar"><i style="width:${pct}%"></i></div></div>
-        ${g.done ? '<span class="muted">Reached</span>' : `<button class="btn" data-step="${g.id}" aria-label="Add a step to ${esc(g.title)}">+ step</button>`}
+        ${g.done ? '<span class="sub">Reached</span>' : `<button class="btn btn-sm" data-step="${g.id}" aria-label="Add a step to ${esc(g.title)}">+ step</button>`}
       </li>`;
-    }).join('') : '<li class="muted">No goals yet. Start one above. Buddy keeps count of your steps.</li>';
+    }).join('') : '<li class="sub">No goals yet. Start one above. Buddy keeps count of your steps.</li>';
   }
   /* ---------- lists ---------- */
   function renderLists() {
     const shop = state.shopping.filter((x) => !x.done);
     $('shopList').innerHTML = shop.length ? shop.map((x) =>
-      `<li class="item"><button class="check" data-buy="${x.id}" aria-label="Bought ${esc(x.text)}"></button><span class="t">${esc(x.text)}</span></li>`).join('')
-      : '<li class="muted">Nothing to buy.</li>';
+      `<li class="list-item"><button class="check" data-buy="${x.id}" aria-label="Bought ${esc(x.text)}"></button><span class="t">${esc(x.text)}</span></li>`).join('')
+      : '<li class="sub">Nothing to buy.</li>';
     $('noteList').innerHTML = state.notes.length ? state.notes.slice().reverse().map((x) =>
-      `<li class="item"><span class="t">${esc(x.text)}</span></li>`).join('') : '<li class="muted">No notes yet.</li>';
+      `<li class="list-item"><span class="t">${esc(x.text)}</span></li>`).join('') : '<li class="sub">No notes yet.</li>';
   }
   /* ---------- health ---------- */
   function renderHealth() {
@@ -223,7 +273,7 @@
     $('waterText').textContent = `${s.waterMl} of ${s.waterGoalMl} ml`;
     if (!$('moods').childElementCount) {
       ['great', 'good', 'fine', 'meh', 'tired', 'awful'].forEach((w) => {
-        const b = document.createElement('button'); b.className = 'btn'; b.textContent = w; b.dataset.mood = w; $('moods').appendChild(b);
+        const b = document.createElement('button'); b.className = 'btn btn-sm'; b.textContent = w; b.dataset.mood = w; $('moods').appendChild(b);
       });
     }
     $('moodNote').textContent = s.mood ? `Last check-in: ${s.mood}` : 'Tap how you feel. It stays on your phone.';
@@ -244,6 +294,8 @@
   function renderMore() {
     setSwitch('swVoiceOut', prefs.voiceOut); setSwitch('swVoiceIn', prefs.voiceIn); setSwitch('swFx', prefs.fx);
     setSwitch('swCalm', prefs.calm); setSwitch('swSfx', prefs.sfx); setSwitch('cfRemember', cfg.remember);
+    setSwitch('swNatural', prefs.naturalVoice); setSwitch('swAgent', prefs.agentOn);
+    $('natEngine').value = prefs.natEngine; fillNatVoices(); $('natVoice').value = prefs.natVoice;
     $('rateRange').value = prefs.rate;
     const sup = V.support();
     $('voiceSupport').textContent = `Voice input: ${sup.listen ? 'available' : 'not in this browser'}. Voice output: ${sup.speak ? 'available' : 'not in this browser'}.`;
@@ -318,13 +370,93 @@
     $('chat').innerHTML = ''; delete $('chat').dataset.started; renderChatIntro(); renderCurrent(); toast('Cleared on this phone.');
   }
 
+  /* ---------- agent and natural voice (both run on the user's Worker, with keys kept there) ---------- */
+  let history = [];
+  const workerReady = () => !!(cfg.mode === 'worker' && cfg.workerUrl && cfg.token);
+  function summaryText() {
+    const s = L.summary(state, Date.now());
+    const open = state.tasks.filter((t) => !t.done).slice(0, 8).map((t) => t.text);
+    const goals = state.goals.filter((g) => !g.done).slice(0, 5).map((g) => `${g.title} (${g.progress} of ${g.target})`);
+    const soon = state.reminders.filter((r) => !r.done && r.at >= Date.now()).sort((x, y) => x.at - y.at).slice(0, 2)
+      .map((r) => `${r.text} at ${new Date(r.at).toTimeString().slice(0, 5)}`);
+    return [`open tasks: ${open.length ? open.join('; ') : 'none'}`, `goals: ${goals.length ? goals.join('; ') : 'none'}`,
+      `reminders: ${soon.length ? soon.join('; ') : 'none'}`, `water today: ${s.waterMl} ml of ${s.waterGoalMl}`,
+      `shopping to buy: ${s.shopping}`, `last mood: ${s.mood || 'not recorded'}`].join('\n');
+  }
+  let audioEl = null;
+  const KOKORO_URL = 'https://cdn.jsdelivr.net/npm/kokoro-js@1/+esm';        // pin an exact version before you publish
+  const KOKORO_MODEL = 'onnx-community/Kokoro-82M-v1.0-ONNX';
+  const kokoro = window.BuddyKokoro ? BuddyKokoro.createSpeaker({
+    load: async () => { const m = await import(KOKORO_URL); return m.KokoroTTS.from_pretrained(KOKORO_MODEL, { dtype: 'q8', device: 'wasm' }); },
+  }) : null;
+  function playBlobs(blobs) {
+    return new Promise((resolve, reject) => {
+      if (!audioEl) audioEl = new Audio();
+      let i = 0;
+      const next = () => {
+        if (i >= blobs.length) { resolve(); return; }
+        const url = URL.createObjectURL(blobs[i++]);
+        audioEl.src = url;
+        audioEl.onended = () => { URL.revokeObjectURL(url); next(); };
+        audioEl.onerror = () => reject(new Error('the audio could not play'));
+        audioEl.play().catch(reject);
+      };
+      next();
+    });
+  }
+  async function speakReply(text) {
+    if (!text) return;
+    if (prefs.naturalVoice && prefs.natEngine === 'kokoro' && kokoro) {
+      try {
+        notchWorking(kokoro.isLoaded() ? 'Speaking' : 'Loading Buddy\'s voice (first time)');
+        const blobs = await kokoro.speak(text, prefs.natVoice);
+        await playBlobs(blobs);
+        return;
+      } catch (e) {
+        toast('The free voice is not ready: ' + e.message + ' Using the phone voice.', true);
+      }
+    } else if (prefs.naturalVoice && workerReady() && window.BuddyAgent && prefs.natEngine !== 'kokoro') {
+      try {
+        const blob = await BuddyAgent.speakBlob({ base: cfg.workerUrl, secret: cfg.token, text, engine: prefs.natEngine, voice: prefs.natVoice });
+        await playBlobs([blob]);
+        return;
+      } catch (e) { /* fall back to the phone's voice below */ }
+    }
+    if (prefs.voiceOut) V.speak(text, { rate: prefs.rate, voiceName: prefs.voiceName });
+  }
+  async function askAgent(v, probe) {
+    try {
+      const out = await BuddyAgent.runAgent({
+        base: cfg.workerUrl, secret: cfg.token, userText: v, history: history, summary: summaryText(), now: Date.now(),
+        execute: (cmd) => run(cmd).reply,          // each tool runs as a normal Buddy command on this phone
+      });
+      const reply = [out.say, ...out.results.filter((r) => !out.say || out.results.length > 1)].filter(Boolean).join('\n');
+      history.push({ role: 'user', content: v });
+      history.push({ role: 'assistant', content: out.say || reply });
+      history = history.slice(-12);
+      addMsg('b', reply || 'Done.');
+      if (bigAvatar) bigAvatar.reply(out.results.length ? 'excited' : 'happy');
+      notchResult('happy');
+      renderHome();
+      speakReply(out.say);
+    } catch (e) {
+      // the agent is unavailable: the built-in commands still work
+      const r = run(v);
+      addMsg('b', e.message + ' Buddy answers with its built-in commands instead.');
+      addMsg('b', r.reply);
+      if (bigAvatar) bigAvatar.reply(r.mood);
+      notchResult(r.mood);
+      renderHome();
+    }
+  }
+
   /* ---------- wiring ---------- */
   document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => showView(t.dataset.view)));
   $('openMore').addEventListener('click', () => showView('more'));
   $('chatForm').addEventListener('submit', (e) => { e.preventDefault(); const v = $('chatText').value; $('chatText').value = ''; ask(v); });
   $('quick').addEventListener('click', (e) => { const b = e.target.closest('[data-cmd]'); if (b) ask(b.dataset.cmd); });
   $('micBtn').addEventListener('click', toggleMic);
-  $('taskForm').addEventListener('submit', (e) => { e.preventDefault(); const v = $('taskText').value.trim(); if (!v) return; const r = run('add task ' + v); $('taskText').value = ''; toast(r.reply); renderTasks(); });
+  $('taskForm').addEventListener('submit', (e) => { e.preventDefault(); const v = $('taskText').value.trim(); if (!v) { reactMistake('taskText'); return; } const r = run('add task ' + v); reactDone(); $('taskText').value = ''; toast(r.reply); renderTasks(); });
   $('taskList').addEventListener('click', (e) => { const b = e.target.closest('[data-done]'); if (!b) return; const r = run('done ' + b.dataset.done); toast(r.reply); renderTasks(); });
   $('remForm').addEventListener('submit', (e) => { e.preventDefault(); const v = $('remText').value.trim(); if (!v) return; const r = run(v); $('remText').value = ''; toast(r.reply); renderReminders(); });
   $('remList').addEventListener('click', (e) => { const b = e.target.closest('[data-rdone]'); if (!b) return; const r = run('done reminder ' + b.dataset.rdone); toast(r.reply); renderReminders(); });
@@ -345,11 +477,12 @@
   $('goalForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const title = $('goalTitle').value.trim(), n = Math.max(1, Math.min(999, parseInt($('goalTarget').value, 10) || 10));
-    if (!title) { toast('Type what you want to reach first.', true); return; }
+    if (!title) { reactMistake('goalTitle'); toast('Type what you want to reach first.', true); return; }
+    reactDone();
     const r = run(`goal ${title} ${n} steps`); $('goalTitle').value = ''; toast(r.reply); renderGoals();
   });
   $('goalList').addEventListener('click', (e) => { const b = e.target.closest('[data-step]'); if (!b) return; const r = run('step ' + b.dataset.step); toast(r.reply, r.mood === 'confused'); renderGoals(); });
-  $('shopForm').addEventListener('submit', (e) => { e.preventDefault(); const v = $('shopText').value.trim(); if (!v) return; const r = run('add shopping ' + v); $('shopText').value = ''; toast(r.reply); renderLists(); });
+  $('shopForm').addEventListener('submit', (e) => { e.preventDefault(); const v = $('shopText').value.trim(); if (!v) { reactMistake('shopText'); return; } const r = run('add shopping ' + v); reactDone(); $('shopText').value = ''; toast(r.reply); renderLists(); });
   $('shopList').addEventListener('click', (e) => {
     const b = e.target.closest('[data-buy]'); if (!b) return;
     const item = state.shopping.find((x) => String(x.id) === b.dataset.buy);
@@ -363,6 +496,20 @@
   bindSwitch('swVoiceOut', 'voiceOut');
   bindSwitch('swVoiceIn', 'voiceIn', renderHome);
   bindSwitch('swFx', 'fx');
+  bindSwitch('swNatural', 'naturalVoice');
+  function fillNatVoices() {
+    const sel = $('natVoice');
+    const list = prefs.natEngine === 'kokoro' ? BuddyKokoro.VOICES.map((v) => [v, v.replace('_', ' ')])
+      : prefs.natEngine === 'polly' ? [['Joanna', 'Joanna (warm, clear, US English)'], ['Matthew', 'Matthew (calm, US English)'], ['Salli', 'Salli (bright, US English)'], ['Joey', 'Joey (friendly, US English)'], ['Ivy', 'Ivy (young, US English)']]
+      : [];
+    sel.innerHTML = list.map(([v, label]) => `<option value="${esc(v)}">${esc(label)}</option>`).join('');
+    sel.hidden = !list.length; sel.previousElementSibling && (sel.previousElementSibling.hidden = !list.length);
+    if (list.length && !list.some(([v]) => v === prefs.natVoice)) { prefs.natVoice = list[0][0]; savePrefs(); }
+    sel.value = prefs.natVoice;
+  }
+  $('natEngine').addEventListener('change', () => { prefs.natEngine = $('natEngine').value; fillNatVoices(); savePrefs(); });
+  $('natVoice').addEventListener('change', () => { prefs.natVoice = $('natVoice').value; savePrefs(); });
+  bindSwitch('swAgent', 'agentOn');
   bindSwitch('swCalm', 'calm');
   bindSwitch('swSfx', 'sfx');
   $('voiceSel').addEventListener('change', () => { prefs.voiceName = $('voiceSel').value; savePrefs(); });
@@ -415,7 +562,7 @@
     for (const r of due) {
       state.notified.push(r.id); saveLocal();
       const msg = 'Reminder: ' + r.text;
-      toast(msg); addMsg('b', msg); if (bigAvatar) bigAvatar.hold('alert', 6000);
+      addMsg('b', msg); if (bigAvatar) bigAvatar.hold('alert', 6000); notchAlert(msg, r.id);
       if (prefs.sfx) beep(); buzz([40, 60, 40]);
       if (prefs.voiceOut) V.speak(msg, { rate: prefs.rate, voiceName: prefs.voiceName });
     }
@@ -426,5 +573,6 @@
   const qs = new URLSearchParams(location.search);
   if (qs.get('view') && document.getElementById('v-' + qs.get('view'))) showView(qs.get('view'));
   if (qs.get('cmd')) { setTimeout(() => ask(qs.get('cmd')), 300); }
+  if (bigAvatar) setTimeout(() => bigAvatar.hold('happy', 1500), 400);   // wakes up when the page opens
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) navigator.serviceWorker.register('sw.js').catch(() => { });
 })();

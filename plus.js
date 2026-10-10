@@ -200,9 +200,19 @@
       if (!w) return done('Tell me when, for example: "remind me at 18:00 to call mum" or "remind me in 30 minutes to stretch".', 'confused');
       const what = w.rest.replace(/^(to|that|about)\s+/i, '').trim();
       if (!what) return done('What should I remind you about?', 'confused');
+      if (w.at <= now + 30000) return done('That time has already passed. Give me a time in the future.', 'confused');
+      if (w.at > now + 366 * 86400000) return done('I can only remind you within the next year.', 'confused');
       const r = { id: id(), text: what.slice(0, 200), at: w.at, done: false };
       s.reminders.push(r);
       return done(`Reminder set for ${new Date(w.at).toTimeString().slice(0, 5)}: ${r.text}`, 'excited');
+    }
+    if ((m = t.match(/^snooze reminder\s*#?(\d+)(?:\s+(\d{1,3}))?$/))) {
+      const r = s.reminders.find((x) => x.id === Number(m[1]));
+      if (!r || r.done) return done('I cannot find that reminder.', 'confused');
+      const mins = m[2] ? Math.max(1, Number(m[2])) : 10;
+      r.at = now + mins * 60000;
+      s.notified = s.notified.filter((id) => id !== r.id);   // it rings again when the new time comes
+      return done(`Snoozed for ${mins} minutes: ${r.text}`, 'happy');
     }
     if (/^(reminders|my reminders|list reminders)$/.test(t)) {
       const open = s.reminders.filter((r) => !r.done).sort((a, b) => a.at - b.at);
@@ -222,7 +232,7 @@
     if ((m = t.match(/^(?:did|done)\s+habit\s+(.+)$/)) || (m = t.match(/^did\s+(.+)$/))) {
       const name = m[1].trim().toLowerCase();
       const h = s.habits.find((x) => x.name.toLowerCase() === name || x.name.toLowerCase().indexOf(name) !== -1);
-      if (!h) return done('I do not have that habit yet. Add it with "habit ' + name + '".', 'confused');
+      if (!h) return null;     // not a habit we know: treat it as ordinary talk
       const d = day(now);
       if (h.log.indexOf(d) === -1) h.log.push(d);
       const n = streak(h, now);

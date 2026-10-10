@@ -117,3 +117,14 @@ test("every new command survives odd input without throwing", () => {
   }
   assert.ok(s.reminders.every((r) => typeof r.at === "number"));
 });
+
+test("snooze: a reminder moves on and rings again at the new time", () => {
+  const T = Date.parse("2026-10-09T10:00:00Z");
+  let s = P.handleAll(P.migrate({}), "remind me in 5 minutes to stretch", T).state;
+  const id = s.reminders[0].id;
+  s.notified.push(id);
+  s = P.handleAll(s, "snooze reminder " + id, T + 6 * 60000).state;
+  assert.equal(P.dueReminders(s, T + 6 * 60000).length, 0, "not due again straight away");
+  assert.equal(P.dueReminders(s, T + 6 * 60000 + 10 * 60000).length, 1, "due ten minutes later");
+  assert.match(P.handleAll(s, "snooze reminder 999", T).reply, /cannot find/);
+});

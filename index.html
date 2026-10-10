@@ -6,21 +6,25 @@
 <meta name="theme-color" content="#05060f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="description" content="Buddy: your companion for tasks, goals, lists, water and mood. Talk to it by voice. Works on your phone.">
+<meta name="description" content="Buddy: your companion for tasks, goals, reminders, habits, shopping, water and mood. Talk to it by voice. Works on your phone.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Buddy</title>
 <style>
-/* ---- Design system -------------------------------------------------------------
-   Corners follow one rule (Border Radius Tips): outer radius = inner radius + padding.
-   Motion: one duration scale and one easing curve, all switched off by reduced-motion or Calm mode. */
+/* =====================================================================================
+   BUDDY DESIGN SYSTEM
+   Tokens: colour (per theme), space (4 px steps), radius (inner + padding = outer), type, motion.
+   Components: surface (card), stack, eyebrow, lead, stat, list-item, btn, chip, field, switch,
+   segmented, notch host, nav. Every screen is built only from these parts.
+   ===================================================================================== */
 :root{
-  --pad:14px; --r-inner:14px; --r-outer:calc(var(--r-inner) + var(--pad));
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px;
+  --pad:var(--s4); --r-inner:14px; --r-outer:calc(var(--r-inner) + var(--pad));
   --d1:.15s; --d2:.3s; --d3:.5s; --ease:cubic-bezier(.2,.8,.2,1); --spring:cubic-bezier(.34,1.4,.64,1);
   --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
-/* Themes: change only colour variables */
 [data-theme=night]{--bg:#05060f;--surface:#0f1222;--surface2:#151a2e;--line:rgba(255,255,255,.08);--text:#e8f1f5;--muted:#8a9bb0;--c1:#0EA5A4;--c2:#06B6D4;--glow:rgba(14,165,164,.45)}
 [data-theme=teal]{--bg:#031417;--surface:#082228;--surface2:#0c2d35;--line:rgba(255,255,255,.09);--text:#e6fbf8;--muted:#7fb3ad;--c1:#2dd4bf;--c2:#22d3ee;--glow:rgba(45,212,191,.45)}
 [data-theme=warm]{--bg:#120a08;--surface:#1d110d;--surface2:#2a1813;--line:rgba(255,255,255,.09);--text:#fbeee8;--muted:#c9a79a;--c1:#ff5b2e;--c2:#ffb67a;--glow:rgba(255,91,46,.45)}
@@ -28,99 +32,132 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0}
 body{background:radial-gradient(760px 460px at 50% -140px,var(--glow),transparent 70%),var(--bg);color:var(--text);
-  font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;display:flex;flex-direction:column;position:relative}
+  font:16px/1.5 var(--font);overflow:hidden;display:flex;flex-direction:column;position:relative}
 #fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:.7}
 .app{position:relative;z-index:1;display:flex;flex-direction:column;height:100%;max-width:560px;width:100%;margin:0 auto}
-header{display:flex;align-items:center;gap:10px;padding:calc(var(--safe-top) + 12px) 16px 10px}
-.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.05rem}
-.orb{width:34px;height:34px;border-radius:50%;flex:none;background:radial-gradient(circle at 35% 30%,#fff,var(--c1) 42%,var(--c2) 82%);
-  box-shadow:0 0 18px var(--glow);position:relative;animation:float 4.5s ease-in-out infinite}
-.orb::before,.orb::after{content:"";position:absolute;top:13px;width:4px;height:8px;border-radius:4px;background:var(--bg)}
-.orb::before{left:11px}.orb::after{right:11px}
-.pill{margin-left:auto;font-size:.78rem;color:var(--muted);padding:6px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
+
+/* top bar */
+.topbar{display:flex;align-items:center;gap:var(--s3);padding:calc(var(--safe-top) + 58px) var(--s4) var(--s3)}   /* room for the notch above */
+.brand{display:flex;align-items:center;gap:var(--s2);font-weight:700;font-size:1.05rem}
+.pill{margin-left:auto;font-size:.78rem;color:var(--muted);padding:6px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
 .pill.ok{color:var(--c1)}.pill.bad{color:#f87171}
 .iconbtn{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--text);display:grid;place-items:center;cursor:pointer;transition:transform var(--d1) var(--ease)}
 .iconbtn:active{transform:scale(.94)}
-main{flex:1;overflow-y:auto;padding:4px 14px 20px;-webkit-overflow-scrolling:touch;position:relative}
+
+main{flex:1;overflow-y:auto;padding:var(--s2) var(--s4) var(--s5);-webkit-overflow-scrolling:touch;position:relative}
 .view{display:none}.view.on{display:block;animation:rise var(--d2) var(--ease) both}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-outer);padding:var(--pad);margin:0 0 12px;box-shadow:0 18px 40px -30px #000}
-.card h2{font-size:1rem;margin:0 0 10px;font-weight:650;display:flex;align-items:center;gap:8px}
-.muted{color:var(--muted);font-size:.9rem}
-.row{display:flex;gap:8px;align-items:center}
-.hero{display:flex;align-items:center;gap:14px}
-.big{width:66px;height:66px;border-radius:50%;flex:none;position:relative;background:radial-gradient(circle at 35% 30%,#fff,var(--c1) 42%,var(--c2) 82%);
-  box-shadow:0 0 30px var(--glow);animation:float 4.5s ease-in-out infinite}
-.big::before,.big::after{content:"";position:absolute;top:25px;width:6px;height:12px;border-radius:6px;background:var(--bg);transition:height var(--d2) var(--ease)}
-.big::before{left:20px}.big::after{right:20px}
-.big.think::before,.big.think::after{height:3px;top:31px}
-.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
-.stat{background:var(--surface2);border-radius:var(--r-inner);padding:10px 12px}
-.stat b{display:block;font-size:1.25rem;font-variant-numeric:tabular-nums}.stat span{color:var(--muted);font-size:.8rem}
-.chat{display:flex;flex-direction:column;gap:8px;max-height:40vh;overflow-y:auto;padding:2px;scroll-behavior:smooth}
-.msg{max-width:88%;padding:9px 12px;border-radius:var(--r-inner);white-space:pre-wrap;overflow-wrap:anywhere;animation:rise var(--d2) var(--ease) both}
-.msg.u{align-self:flex-end;background:linear-gradient(120deg,var(--c1),var(--c2));color:#031417;font-weight:600}
-.msg.b{align-self:flex-start;background:var(--surface2);border:1px solid var(--line)}
-.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 0 0;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
-.chip,.btn{font:inherit;font-weight:600;color:var(--text);background:var(--surface2);border:1px solid var(--line);border-radius:var(--r-inner);
-  min-height:44px;padding:0 14px;cursor:pointer;flex:none;transition:transform var(--d1) var(--ease),box-shadow var(--d2) var(--ease)}
-.btn.primary{background:linear-gradient(120deg,var(--c1),var(--c2));color:#031417;border:0}
-.btn.danger{background:rgba(248,113,113,.14);color:#fecaca;border:1px solid rgba(248,113,113,.3)}
+
+/* surface: the one card used everywhere */
+.surface{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-outer);padding:var(--pad);margin:0 0 var(--s3);box-shadow:0 18px 40px -30px #000}
+.surface-head{display:flex;align-items:center;gap:var(--s2);margin:0 0 var(--s3)}
+.surface-head h2{font-size:1rem;font-weight:650;margin:0}
+.surface-head .aside{margin-left:auto;color:var(--muted);font-size:.85rem}
+.eyebrow{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 var(--s2)}
+.lead{color:var(--muted);font-size:.9rem;margin:var(--s2) 0 0}
+.stack{display:flex;flex-direction:column;gap:var(--s3)}
+.row{display:flex;gap:var(--s2);align-items:center}
+.wrap{flex-wrap:wrap}
+
+/* hero (Home) */
+.hero{display:flex;align-items:center;gap:var(--s4)}
+.hero .greet{font-size:1.25rem;font-weight:650;margin:0}
+.hero .date{color:var(--muted);font-size:.9rem}
+
+/* stat tiles */
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s2);margin-top:var(--s4)}
+.stat{background:var(--surface2);border-radius:var(--r-inner);padding:var(--s3) var(--s3)}
+.stat b{display:block;font-size:1.3rem;font-variant-numeric:tabular-nums;line-height:1.2}
+.stat span{color:var(--muted);font-size:.8rem}
+
+/* list items */
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--s2)}
+.list-item{display:flex;align-items:center;gap:var(--s3);background:var(--surface2);border-radius:var(--r-inner);padding:var(--s3);animation:rise var(--d2) var(--ease) both}
+.list-item .t{flex:1;min-width:0;overflow-wrap:anywhere}
+.list-item .sub{color:var(--muted);font-size:.85rem}
+.list-item.done .t{text-decoration:line-through;color:var(--muted)}
+.empty{color:var(--muted);font-size:.92rem;padding:var(--s2) 0}
+
+/* buttons, chips, fields */
+.btn,.chip{font:inherit;font-weight:600;color:var(--text);background:var(--surface2);border:1px solid var(--line);border-radius:var(--r-inner);
+  min-height:44px;padding:0 var(--s4);cursor:pointer;transition:transform var(--d1) var(--ease),opacity var(--d2)}
+.btn:active,.chip:active{transform:scale(.97)}
+.btn-primary{background:linear-gradient(120deg,var(--c1),var(--c2));color:#031417;border:0}
+.btn-danger{background:rgba(248,113,113,.14);color:#fecaca;border:1px solid rgba(248,113,113,.3)}
 .btn:disabled{opacity:.5}
-.chip:active,.btn:active{transform:scale(.97)}
-:focus-visible{outline:none;box-shadow:0 0 0 3px var(--glow)}
-input,select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:var(--r-inner);min-height:44px;padding:0 12px;width:100%;transition:border-color var(--d2),box-shadow var(--d2)}
+.btn-sm{min-height:34px;padding:0 var(--s3);font-size:.85rem}
+.chip{min-height:38px;padding:0 var(--s3);font-size:.9rem;flex:none;border-radius:999px}
+.chips{display:flex;gap:var(--s2);overflow-x:auto;padding:var(--s2) 0 0;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.field{display:block;color:var(--muted);font-size:.88rem;margin:var(--s3) 0 var(--s2)}
+input,select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:var(--r-inner);min-height:44px;padding:0 var(--s3);width:100%;transition:border-color var(--d2),box-shadow var(--d2)}
 input:focus,select:focus{outline:none;border-color:var(--c1);box-shadow:0 0 0 3px var(--glow)}
-label.field{display:block;color:var(--muted);font-size:.9rem;margin:10px 0 6px}
-.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
-.item{display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:var(--r-inner);padding:10px 12px;animation:rise var(--d2) var(--ease) both}
-.item .t{flex:1;min-width:0;overflow-wrap:anywhere}
-.item.done .t{text-decoration:line-through;color:var(--muted)}
-.check{width:34px;height:34px;min-height:34px;padding:0;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid var(--c1);background:transparent;color:var(--c1);cursor:pointer;transition:background var(--d2) var(--ease),transform var(--d1) var(--spring)}
-.check.on{background:linear-gradient(120deg,var(--c1),var(--c2));color:#031417;border-color:transparent}
-.check:active{transform:scale(.88)}
-.bar{height:10px;border-radius:10px;background:var(--surface2);overflow:hidden;margin:8px 0 4px}
-.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--c1),var(--c2));border-radius:10px;transition:width var(--d3) var(--ease)}
-.moods{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.mic{width:76px;height:76px;border-radius:50%;border:0;color:#031417;background:linear-gradient(120deg,var(--c1),var(--c2));display:grid;place-items:center;cursor:pointer;
+:focus-visible{outline:none;box-shadow:0 0 0 3px var(--glow)}
+input.shake{animation:shake .35s ease-in-out 2}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.composer{display:flex;gap:var(--s2);align-items:center;margin-top:var(--s3)}
+.composer input{flex:1}
+.composer .btn{min-width:48px;padding:0}
+
+/* progress */
+.bar{height:8px;border-radius:8px;background:var(--surface2);overflow:hidden;margin:var(--s2) 0 var(--s1)}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--c1),var(--c2));border-radius:8px;transition:width var(--d3) var(--ease)}
+
+/* mic + voice bar */
+.mic{width:72px;height:72px;border-radius:50%;border:0;color:#031417;background:linear-gradient(120deg,var(--c1),var(--c2));display:grid;place-items:center;cursor:pointer;
   box-shadow:0 10px 30px -8px var(--glow);transition:transform var(--d1) var(--spring);flex:none}
 .mic:active{transform:scale(.92)}
 .mic.live{animation:pulse 1.2s ease-out infinite}
 .mic[hidden]{display:none}
-.voicebar{display:flex;align-items:center;gap:12px;margin-top:10px}
-.voicebar .muted{flex:1}
-.note{background:rgba(251,191,36,.08);border-left:3px solid #fbbf24;padding:10px 12px;border-radius:var(--r-inner);font-size:.9rem;color:#fde68a}
-/* switches */
+.voicebar{display:flex;align-items:center;gap:var(--s3);margin-top:var(--s3)}
+.voicebar .lead{margin:0;flex:1}
+
+/* chat */
+.chat{display:flex;flex-direction:column;gap:var(--s2);max-height:44vh;overflow-y:auto;padding:var(--s1)}
+.msg{max-width:88%;padding:var(--s2) var(--s3);border-radius:var(--r-inner);white-space:pre-wrap;overflow-wrap:anywhere;animation:rise var(--d2) var(--ease) both}
+.msg.u{align-self:flex-end;background:linear-gradient(120deg,var(--c1),var(--c2));color:#031417;font-weight:600}
+.msg.b{align-self:flex-start;background:var(--surface2);border:1px solid var(--line)}
+
+/* switches and settings rows */
+.setting{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) 0;border-bottom:1px solid var(--line)}
+.setting:last-child{border-bottom:0}
+.setting .txt{flex:1;min-width:0}.setting .txt b{display:block;font-weight:600}.setting .txt span{color:var(--muted);font-size:.85rem}
 .switch{position:relative;width:52px;height:30px;flex:none;border-radius:999px;background:var(--surface2);border:1px solid var(--line);cursor:pointer;transition:background var(--d2) var(--ease)}
 .switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3);transition:transform var(--d2) var(--spring)}
 .switch[aria-checked=true]{background:linear-gradient(120deg,var(--c1),var(--c2));border-color:transparent}
 .switch[aria-checked=true]::after{transform:translateX(22px)}
-.setting{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
-.setting:last-child{border-bottom:0}
-.setting .txt{flex:1;min-width:0}.setting .txt b{display:block;font-weight:600}.setting .txt span{color:var(--muted);font-size:.85rem}
-.themes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
-.theme{border:2px solid transparent;border-radius:var(--r-inner);padding:8px;background:var(--surface2);cursor:pointer;color:var(--text);font:600 .8rem system-ui;display:grid;gap:6px;justify-items:center}
+
+/* segmented control: themes */
+.segmented{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s2);margin-top:var(--s2)}
+.theme{border:2px solid transparent;border-radius:var(--r-inner);padding:var(--s2);background:var(--surface2);cursor:pointer;color:var(--text);font:600 .8rem var(--font);display:grid;gap:var(--s2);justify-items:center}
 .theme[aria-pressed=true]{border-color:var(--c1)}
-.swatch{width:100%;height:28px;border-radius:calc(var(--r-inner) - 4px);background:linear-gradient(120deg,var(--c1),var(--c2))}
-nav.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:var(--surface);border-top:1px solid var(--line);padding:8px 8px calc(var(--safe-bottom) + 8px);position:relative;z-index:1}
+.swatch{width:100%;height:28px;border-radius:10px;background:linear-gradient(120deg,var(--c1),var(--c2))}
+
+/* round check button used in lists */
+.check{width:34px;height:34px;min-height:34px;padding:0;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid var(--c1);background:transparent;color:var(--c1);cursor:pointer;transition:background var(--d2) var(--ease),transform var(--d1) var(--spring)}
+.check.on{background:linear-gradient(120deg,var(--c1),var(--c2));color:#031417;border-color:transparent}
+.check:active{transform:scale(.88)}
+
+/* a quiet note */
+.note{background:rgba(251,191,36,.08);border-left:3px solid #fbbf24;padding:var(--s3);border-radius:var(--r-inner);font-size:.9rem;color:#fde68a;margin:0 0 var(--s3)}
+
+/* the notch host (status pill at the top) */
+.notch-host{position:fixed;top:calc(var(--safe-top) + 8px);left:0;right:0;height:0;z-index:20;pointer-events:none}
+
+/* navigation */
+nav.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--s1);background:var(--surface);border-top:1px solid var(--line);padding:var(--s2) var(--s2) calc(var(--safe-bottom) + var(--s2));position:relative;z-index:1}
 .tab{display:flex;flex-direction:column;align-items:center;gap:3px;min-height:52px;border-radius:var(--r-inner);color:var(--muted);font-size:.72rem;font-weight:600;background:none;border:0;padding:6px 0;cursor:pointer;transition:color var(--d2),background var(--d2)}
 .tab.on{color:var(--text);background:var(--surface2)}
-.tab.on .ic{color:var(--c1);transform:translateY(-1px)}
+.tab.on .ic{color:var(--c1)}
 .tab .ic{transition:transform var(--d2) var(--spring)}
+
+/* toast */
 .toast{position:fixed;left:50%;bottom:calc(var(--safe-bottom) + 90px);transform:translate(-50%,14px) scale(.98);opacity:0;max-width:90vw;background:var(--surface2);
-  border:1px solid var(--line);border-radius:var(--r-outer);padding:12px 16px;box-shadow:0 18px 40px -12px #000;transition:opacity var(--d2) var(--ease),transform var(--d2) var(--spring);pointer-events:none;z-index:9;white-space:pre-wrap}
+  border:1px solid var(--line);border-radius:var(--r-outer);padding:var(--s3) var(--s4);box-shadow:0 18px 40px -12px #000;transition:opacity var(--d2) var(--ease),transform var(--d2) var(--spring);pointer-events:none;z-index:9;white-space:pre-wrap}
 .toast.on{opacity:1;transform:translate(-50%,0) scale(1)}
 .toast.err{border-color:rgba(248,113,113,.5);color:#fecaca}
-.section-title{margin:14px 4px 8px;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-@keyframes pulse{0%{box-shadow:0 0 0 0 var(--glow)}100%{box-shadow:0 0 0 22px transparent}}
-/* Calm mode and reduced motion switch every animation off */
-html.calm *,html.calm *::before,html.calm *::after{animation:none!important;transition:none!important}
-@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
-@media (min-width:700px){body{border-left:1px solid var(--line);border-right:1px solid var(--line)}}
-/* ---- Buddy's avatar ---- */
+
+/* avatar */
 .avatar{--av:64px;width:var(--av);height:var(--av);flex:none;position:relative;animation:float 4.5s ease-in-out infinite;transition:transform var(--d2) var(--spring)}
-.avatar.big{--av:150px}
+.avatar.big{--av:132px}
 .avatar.small{--av:34px}
 .avatar svg{width:100%;height:100%;overflow:visible;display:block}
 .avatar .eyes{transform-box:fill-box;transform-origin:center;animation:blink 5.5s infinite}
@@ -137,114 +174,238 @@ html.calm *,html.calm *::before,html.calm *::after{animation:none!important;tran
 @keyframes hop{0%,100%{transform:translateY(0)}40%{transform:translateY(-14px)}}
 @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 @keyframes wobble{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}
-html.calm .avatar,html.calm .avatar *{animation:none!important;transition:none!important}
-@media (prefers-reduced-motion:reduce){.avatar,.avatar *{animation:none!important}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 var(--glow)}100%{box-shadow:0 0 0 22px transparent}}
+
+/* the notch */
+.bnotch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:132px;min-height:36px;border-radius:999px;background:#000;color:#fff;
+  box-shadow:0 0 0 1px rgba(255,255,255,.08),0 10px 30px rgba(0,0,0,.55);overflow:hidden;cursor:pointer;pointer-events:auto;
+  transition:width .5s var(--spring),border-radius .45s,box-shadow .4s;font:600 .78rem/1.2 var(--font);user-select:none;max-width:calc(100vw - 24px)}
+.bnotch:focus-visible{outline:2px solid var(--c2);outline-offset:3px}
+.bnotch-row{display:flex;align-items:center;gap:8px;height:36px;padding:0 14px;white-space:nowrap}
+.bnotch-dot{width:9px;height:9px;border-radius:50%;background:var(--c1);box-shadow:0 0 10px var(--c1);flex:none;transition:background .3s,box-shadow .3s}
+.bnotch-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.bnotch-bar{width:0;height:4px;border-radius:4px;background:linear-gradient(90deg,var(--c1),var(--c2));flex:none;transition:width .4s}
+.bnotch-bar i{display:none}
+.bnotch[data-mode=active]{width:260px}
+.bnotch[data-mode=active] .bnotch-bar{width:70px}
+.bnotch[data-mode=active].indeterminate .bnotch-bar{width:70px;background:linear-gradient(90deg,transparent,var(--c2),transparent);animation:sweep 1.4s linear infinite}
+.bnotch[data-mode=result]{width:250px}
+.bnotch[data-mode=result][data-tone=error] .bnotch-dot{background:#f87171;box-shadow:0 0 10px #f87171}
+.bnotch[data-mode=result][data-tone=ok] .bnotch-dot{background:#34d399;box-shadow:0 0 10px #34d399}
+.bnotch[data-mode=alert],.bnotch[data-mode=open]{width:min(340px,92vw);border-radius:24px;height:auto}
+.bnotch[data-mode=alert]{box-shadow:0 0 0 1.5px var(--c1),0 0 28px var(--glow),0 12px 34px rgba(0,0,0,.6);animation:ringpulse .7s ease 2}
+.bnotch[data-mode=alert] .bnotch-row,.bnotch[data-mode=open] .bnotch-row{height:40px}
+.bnotch[data-mode=alert] .bnotch-bar,.bnotch[data-mode=open] .bnotch-bar{display:none}
+.bnotch-body{display:none;padding:0 14px 12px}
+.bnotch[data-mode=alert] .bnotch-body,.bnotch[data-mode=open] .bnotch-body{display:block}
+.bnotch-title{margin:0 0 9px;color:rgba(255,255,255,.9);font-weight:500;white-space:normal}
+.bnotch-btns{display:flex;gap:8px;flex-wrap:wrap}
+.bnotch-btns button{min-height:32px;padding:0 13px;border-radius:999px;border:0;background:rgba(255,255,255,.16);color:#fff;font:700 .74rem/1 var(--font);cursor:pointer}
+.bnotch-btns button:first-child{background:linear-gradient(120deg,var(--c1),var(--c2));color:#031417}
+@keyframes sweep{from{background-position:-70px 0}to{background-position:70px 0}}
+@keyframes ringpulse{0%,100%{transform:translateX(-50%) rotate(0)}25%{transform:translateX(-50%) rotate(-2deg)}75%{transform:translateX(-50%) rotate(2deg)}}
+
+/* calm mode and reduced motion switch every animation off */
+html.calm *,html.calm *::before,html.calm *::after{animation:none!important;transition:none!important}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+@media (min-width:700px){body{border-left:1px solid var(--line);border-right:1px solid var(--line)}}
 </style>
 </head>
 <body>
 <canvas id="fx" aria-hidden="true"></canvas>
 <div class="app">
-<header>
+<div id="notchHost" class="notch-host" aria-live="polite"></div>
+
+<header class="topbar">
   <div class="brand"><div class="avatar small" id="avatarSmall" aria-hidden="true"></div>Buddy</div>
   <span id="status" class="pill" role="status" aria-live="polite">On this phone</span>
-  <button class="iconbtn" id="openMore" aria-label="Settings and cloud">
+  <button class="iconbtn" id="openMore" aria-label="Settings, cloud and more">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
   </button>
 </header>
 
 <main id="main">
-  <!-- HOME: Buddy talks -->
+
+  <!-- HOME: greeting, numbers, what is next, and talking to Buddy -->
   <section class="view on" id="v-home" aria-label="Home">
-    <div class="card">
-      <div class="hero"><div class="avatar big" id="avatarBig" role="img" aria-label="Buddy, your companion"></div>
-        <div><h2 id="greet" style="margin:0 0 2px">Hello</h2><div class="muted" id="today"></div></div></div>
+    <div class="surface">
+      <div class="hero">
+        <div class="avatar big" id="avatarBig" role="img" aria-label="Buddy, your companion"></div>
+        <div>
+          <p class="greet" id="greet">Hello</p>
+          <div class="date" id="today"></div>
+        </div>
+      </div>
       <div class="stats" id="stats"></div>
     </div>
-    <div class="card">
-      <h2>Talk to Buddy</h2>
+
+    <div class="surface" id="todayCard">
+      <p class="eyebrow">Today</p>
+      <p class="lead">Loading your day…</p>
+    </div>
+
+    <div class="surface">
+      <div class="surface-head"><h2>Talk to Buddy</h2><span class="aside">type or speak</span></div>
       <div class="chat" id="chat" aria-live="polite"></div>
       <div class="chips" id="quick"></div>
-      <form id="chatForm" class="row" style="margin-top:10px">
+      <form id="chatForm" class="composer">
         <input id="chatText" placeholder="Type, or tap the mic" aria-label="Message to Buddy" autocomplete="off" enterkeyhint="send" maxlength="500">
-        <button class="btn primary" type="submit" aria-label="Send" style="min-width:48px;padding:0">
+        <button class="btn btn-primary" type="submit" aria-label="Send">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l16-8-6 16-2.5-6.5L4 12z"/></svg></button>
       </form>
       <div class="voicebar">
         <button class="mic" id="micBtn" aria-label="Speak to Buddy" aria-pressed="false">
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/></svg></button>
-        <div class="muted" id="voiceHint">Tap the mic and speak. Buddy answers in words too.</div>
+        <p class="lead" id="voiceHint">Tap the mic and speak. Buddy answers in words too.</p>
       </div>
     </div>
   </section>
 
+  <!-- TASKS: add, reminders, open tasks -->
   <section class="view" id="v-tasks" aria-label="Tasks">
-    <div class="card"><h2>Add a task</h2>
-      <form id="taskForm" class="row"><input id="taskText" placeholder="What needs doing?" aria-label="Task" maxlength="200" autocomplete="off"><button class="btn primary" type="submit">Add</button></form></div>
-    <div class="card"><h2>Open tasks</h2><ul class="list" id="taskList"></ul><div class="bar"><i id="taskBar"></i></div><div class="muted" id="taskPct"></div></div>
-    <div class="card"><h2>Reminders</h2>
-      <form id="remForm" class="row"><input id="remText" placeholder="remind me at 18:00 to call mum" aria-label="Reminder" maxlength="200" autocomplete="off"><button class="btn primary" type="submit">Set</button></form>
-      <ul class="list" id="remList" style="margin-top:10px"></ul></div>
+    <div class="surface">
+      <div class="surface-head"><h2>Add a task</h2></div>
+      <form id="taskForm" class="composer">
+        <input id="taskText" placeholder="What needs doing?" aria-label="Task" maxlength="200" autocomplete="off">
+        <button class="btn btn-primary" type="submit">Add</button>
+      </form>
+    </div>
+
+    <div class="surface">
+      <div class="surface-head"><h2>Reminders</h2><span class="aside">rings while the app is open</span></div>
+      <form id="remForm" class="composer">
+        <input id="remText" placeholder="remind me at 18:00 to call mum" aria-label="Reminder" maxlength="200" autocomplete="off">
+        <button class="btn btn-primary" type="submit">Set</button>
+      </form>
+      <ul class="list" id="remList" style="margin-top:var(--s3)"></ul>
+    </div>
+
+    <div class="surface">
+      <div class="surface-head"><h2>Open tasks</h2><span class="aside" id="taskPct"></span></div>
+      <ul class="list" id="taskList"></ul>
+      <div class="bar"><i id="taskBar"></i></div>
+    </div>
   </section>
 
+  <!-- GOALS: start one, see progress -->
   <section class="view" id="v-goals" aria-label="Goals">
-    <div class="card"><h2>New goal</h2>
+    <div class="surface">
+      <div class="surface-head"><h2>Start a goal</h2></div>
       <form id="goalForm">
         <label class="field" for="goalTitle">What do you want to reach?</label>
         <input id="goalTitle" placeholder="e.g. learn guitar" maxlength="120" autocomplete="off">
         <label class="field" for="goalTarget">How many steps?</label>
-        <div class="row"><input id="goalTarget" type="number" min="1" max="999" value="10" inputmode="numeric" style="max-width:110px"><button class="btn primary" type="submit" style="flex:1">Start goal</button></div>
-      </form></div>
-    <div class="card"><h2>Your goals</h2><ul class="list" id="goalList"></ul></div>
+        <div class="row">
+          <input id="goalTarget" type="number" min="1" max="999" value="10" inputmode="numeric" style="max-width:120px">
+          <button class="btn btn-primary" type="submit" style="flex:1">Start goal</button>
+        </div>
+      </form>
+    </div>
+    <div class="surface">
+      <div class="surface-head"><h2>Your goals</h2></div>
+      <ul class="list" id="goalList"></ul>
+    </div>
   </section>
 
+  <!-- LISTS: shopping and notes -->
   <section class="view" id="v-lists" aria-label="Lists">
-    <div class="card"><h2>Shopping</h2>
-      <form id="shopForm" class="row"><input id="shopText" placeholder="milk, eggs, bread" aria-label="Shopping item" maxlength="200" autocomplete="off"><button class="btn primary" type="submit">Add</button></form>
-      <ul class="list" id="shopList" style="margin-top:10px"></ul></div>
-    <div class="card"><h2>Notes</h2>
-      <form id="noteForm" class="row"><input id="noteText" placeholder="A quick note" aria-label="Note" maxlength="300" autocomplete="off"><button class="btn primary" type="submit">Save</button></form>
-      <ul class="list" id="noteList" style="margin-top:10px"></ul></div>
+    <div class="surface">
+      <div class="surface-head"><h2>Shopping</h2></div>
+      <form id="shopForm" class="composer">
+        <input id="shopText" placeholder="milk, eggs, bread" aria-label="Shopping item" maxlength="200" autocomplete="off">
+        <button class="btn btn-primary" type="submit">Add</button>
+      </form>
+      <ul class="list" id="shopList" style="margin-top:var(--s3)"></ul>
+    </div>
+    <div class="surface">
+      <div class="surface-head"><h2>Notes</h2></div>
+      <form id="noteForm" class="composer">
+        <input id="noteText" placeholder="A quick note" aria-label="Note" maxlength="300" autocomplete="off">
+        <button class="btn btn-primary" type="submit">Save</button>
+      </form>
+      <ul class="list" id="noteList" style="margin-top:var(--s3)"></ul>
+    </div>
   </section>
 
+  <!-- HEALTH: water, mood, habits -->
   <section class="view" id="v-health" aria-label="Health">
-    <div class="card"><h2>Water today</h2>
+    <div class="surface">
+      <div class="surface-head"><h2>Water today</h2></div>
       <div class="bar"><i id="waterBar"></i></div>
-      <div class="row" style="justify-content:space-between"><span class="muted" id="waterText"></span><button class="btn primary" id="drinkBtn">+ 1 glass</button></div></div>
-    <div class="card"><h2>How do you feel?</h2><div class="moods" id="moods"></div><p class="muted" id="moodNote" style="margin:10px 0 0"></p></div>
-    <div class="card"><h2>Habits</h2>
-      <form id="habitForm" class="row"><input id="habitText" placeholder="study 30 minutes" aria-label="New habit" maxlength="80" autocomplete="off"><button class="btn primary" type="submit">Add</button></form>
-      <ul class="list" id="habitList" style="margin-top:10px"></ul></div>
+      <div class="row" style="justify-content:space-between;margin-top:var(--s2)">
+        <span class="lead" id="waterText" style="margin:0"></span>
+        <button class="btn btn-primary btn-sm" id="drinkBtn">+ 1 glass</button>
+      </div>
+    </div>
+    <div class="surface">
+      <div class="surface-head"><h2>How do you feel?</h2></div>
+      <div class="segmented" id="moods" style="grid-template-columns:repeat(3,1fr)"></div>
+      <p class="lead" id="moodNote"></p>
+    </div>
+    <div class="surface">
+      <div class="surface-head"><h2>Habits</h2></div>
+      <form id="habitForm" class="composer">
+        <input id="habitText" placeholder="study 30 minutes" aria-label="New habit" maxlength="80" autocomplete="off">
+        <button class="btn btn-primary" type="submit">Add</button>
+      </form>
+      <ul class="list" id="habitList" style="margin-top:var(--s3)"></ul>
+    </div>
     <div class="note">Buddy is not a doctor. If you feel unsafe, contact someone you trust or local emergency services.</div>
   </section>
 
-  <!-- MORE: settings, themes, voice, effects, cloud -->
+  <!-- MORE: settings, look, voice, plan, cloud, data -->
   <section class="view" id="v-more" aria-label="Settings">
-    <div class="card">
-      <h2>Voice</h2>
+    <div class="surface">
+      <div class="surface-head"><h2>Voice</h2></div>
       <div class="setting"><div class="txt"><b>Hear Buddy reply</b><span>Buddy speaks its answers aloud</span></div><button class="switch" role="switch" aria-checked="true" id="swVoiceOut" aria-label="Hear Buddy reply"></button></div>
       <div class="setting"><div class="txt"><b>Speak to Buddy</b><span>Show the mic button</span></div><button class="switch" role="switch" aria-checked="true" id="swVoiceIn" aria-label="Speak to Buddy"></button></div>
-      <label class="field" for="voiceSel">Buddy's voice</label>
+      <div class="setting"><div class="txt"><b>Natural voice</b><span>A more human voice. Off uses the phone's own voice</span></div><button class="switch" role="switch" aria-checked="false" id="swNatural" aria-label="Natural voice"></button></div>
+      <label class="field" for="natEngine">Natural voice made by</label>
+      <select id="natEngine"><option value="kokoro">Free on this phone (Kokoro, open source, works offline)</option><option value="polly">Amazon Polly (Alexa-style, needs AWS)</option><option value="gemini">Google Gemini (needs a key)</option></select>
+      <label class="field" for="natVoice">Natural voice</label>
+      <select id="natVoice"></select>
+      <label class="field" for="voiceSel">Phone voice</label>
       <select id="voiceSel"><option value="">Automatic (best on this phone)</option></select>
       <label class="field" for="rateRange">Speed</label>
       <input id="rateRange" type="range" min="0.7" max="1.2" step="0.05" value="0.98" style="padding:0;min-height:30px">
-      <div class="muted" id="voiceSupport" style="margin-top:8px"></div>
-      <button class="btn" id="testVoice" style="margin-top:10px">Test Buddy's voice</button>
+      <p class="lead" id="voiceSupport"></p>
+      <div class="row wrap" style="margin-top:var(--s2)"><button class="btn btn-sm" id="testVoice">Test the phone voice</button></div>
     </div>
-    <div class="card">
-      <h2>Look and feel</h2>
-      <div class="themes" id="themes">
+
+    <div class="surface">
+      <div class="surface-head"><h2>Smart features</h2></div>
+      <div class="setting"><div class="txt"><b>Smart agent</b><span>Answers questions with Claude through your Worker. Your chat text is sent to the AI provider while this is on. Built-in commands always work</span></div><button class="switch" role="switch" aria-checked="false" id="swAgent" aria-label="Smart agent"></button></div>
+    </div>
+
+    <div class="surface">
+      <div class="surface-head"><h2>Look and feel</h2></div>
+      <div class="segmented" id="themes">
         <button class="theme" data-theme-pick="night" aria-pressed="false"><span class="swatch"></span>Night</button>
         <button class="theme" data-theme-pick="teal" aria-pressed="false"><span class="swatch"></span>Teal</button>
         <button class="theme" data-theme-pick="warm" aria-pressed="false"><span class="swatch"></span>Warm</button>
         <button class="theme" data-theme-pick="light" aria-pressed="false"><span class="swatch"></span>Light</button>
       </div>
-      <div class="setting" style="margin-top:8px"><div class="txt"><b>Ambient effects</b><span>Soft floating light behind the screen</span></div><button class="switch" role="switch" aria-checked="true" id="swFx" aria-label="Ambient effects"></button></div>
-      <div class="setting"><div class="txt"><b>Calm mode</b><span>No motion at all. Good for focus or sensitivity</span></div><button class="switch" role="switch" aria-checked="false" id="swCalm" aria-label="Calm mode"></button></div>
+      <div class="setting" style="margin-top:var(--s2)"><div class="txt"><b>Ambient effects</b><span>Soft floating light behind the screen</span></div><button class="switch" role="switch" aria-checked="true" id="swFx" aria-label="Ambient effects"></button></div>
+      <div class="setting"><div class="txt"><b>Calm mode</b><span>No motion at all, for focus or sensitivity</span></div><button class="switch" role="switch" aria-checked="false" id="swCalm" aria-label="Calm mode"></button></div>
       <div class="setting"><div class="txt"><b>Sounds and vibration</b><span>A soft tone and a buzz when you finish something</span></div><button class="switch" role="switch" aria-checked="true" id="swSfx" aria-label="Sounds and vibration"></button></div>
     </div>
-    <div class="card">
-      <h2>Cloudflare cloud storage (optional)</h2>
-      <p class="muted">Your data is always saved on this phone. Cloud storage keeps a copy on Cloudflare so another phone can get it.</p>
+
+    <div class="surface">
+      <div class="surface-head"><h2>Plan and share</h2></div>
+      <div class="row wrap">
+        <button class="btn btn-sm" id="reviewBtn">Weekly review</button>
+        <button class="btn btn-sm" id="icsBtn">Calendar file (.ics)</button>
+        <button class="btn btn-sm" id="shareBtn">Share summary</button>
+      </div>
+      <p class="eyebrow" style="margin-top:var(--s4)">Your skills</p>
+      <ul class="list" id="skillList"></ul>
+    </div>
+
+    <div class="surface">
+      <div class="surface-head"><h2>Cloud storage</h2><span class="aside">optional</span></div>
+      <p class="lead" style="margin-top:0">Your data is always kept on this phone. Cloud storage keeps a copy so another phone can get it.</p>
       <label class="field" for="cfMode">How to connect</label>
       <select id="cfMode">
         <option value="worker">My sync Worker (recommended)</option>
@@ -262,27 +423,21 @@ html.calm .avatar,html.calm .avatar *{animation:none!important;transition:none!i
       </div>
       <label class="field" for="cfToken" id="cfTokenLabel">Sync secret</label>
       <input id="cfToken" type="password" autocomplete="off" spellcheck="false" placeholder="paste it here">
-      <div class="setting" style="margin-top:8px"><div class="txt"><b>Remember it on this phone</b><span>Leave off on a shared phone</span></div><button class="switch" role="switch" aria-checked="false" id="cfRemember" aria-label="Remember it on this phone"></button></div>
-      <div class="row" style="flex-wrap:wrap;margin-top:10px">
-        <button class="btn primary" id="cfSaveCfg">Save settings</button>
-        <button class="btn" id="cfTest">Test connection</button>
-        <button class="btn" id="cfPush">Save to cloud</button>
-        <button class="btn" id="cfPull">Load from cloud</button>
-        <button class="btn danger" id="cfForget">Forget token</button>
+      <div class="setting" style="margin-top:var(--s2)"><div class="txt"><b>Remember it on this phone</b><span>Leave off on a shared phone</span></div><button class="switch" role="switch" aria-checked="false" id="cfRemember" aria-label="Remember it on this phone"></button></div>
+      <div class="row wrap" style="margin-top:var(--s3)">
+        <button class="btn btn-primary btn-sm" id="cfSaveCfg">Save settings</button>
+        <button class="btn btn-sm" id="cfTest">Test connection</button>
+        <button class="btn btn-sm" id="cfPush">Save to cloud</button>
+        <button class="btn btn-sm" id="cfPull">Load from cloud</button>
+        <button class="btn btn-danger btn-sm" id="cfForget">Forget token</button>
       </div>
-      <p class="muted" id="cfResult" role="status" aria-live="polite" style="margin-top:12px"></p>
+      <p class="lead" id="cfResult" role="status" aria-live="polite"></p>
     </div>
-    <div class="card">
-      <h2>Plan and share</h2>
-      <div class="row" style="flex-wrap:wrap"><button class="btn" id="icsBtn">Download calendar (.ics)</button><button class="btn" id="shareBtn">Share my summary</button><button class="btn" id="reviewBtn">Weekly review</button></div>
-      <p class="muted">The calendar file adds your open reminders to your phone's calendar app. Sharing opens your phone's share menu, or WhatsApp.</p>
-      <h2 style="margin-top:14px">Your skills</h2>
-      <ul class="list" id="skillList"></ul>
-    </div>
-    <div class="card">
-      <h2>Your data</h2>
-      <div class="row" style="flex-wrap:wrap"><button class="btn" id="exportBtn">Export a copy</button><button class="btn danger" id="resetBtn">Clear everything on this phone</button></div>
-      <p class="muted">Exporting saves a file you keep. Clearing removes the data from this phone only.</p>
+
+    <div class="surface">
+      <div class="surface-head"><h2>Your data</h2></div>
+      <div class="row wrap"><button class="btn btn-sm" id="exportBtn">Export a copy</button><button class="btn btn-danger btn-sm" id="resetBtn">Clear everything on this phone</button></div>
+      <p class="lead">Exporting saves a file you keep. Clearing removes the data from this phone only.</p>
     </div>
     <div class="note">Keep your sync secret or API token private. Buddy is a companion, not a medical or professional service.</div>
   </section>
@@ -304,6 +459,9 @@ html.calm .avatar,html.calm .avatar *{animation:none!important;transition:none!i
 <script src="vfx.js"></script>
 <script src="icons.js"></script>
 <script src="avatar.js"></script>
+<script src="agent.js"></script>
+<script src="notch.js"></script>
+<script src="kokoro-voice.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

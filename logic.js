@@ -57,6 +57,9 @@
       return reply(lines.join('\n'), 'happy');
     }
     if ((m = t.match(/^(?:add task|task)\s+(.+)$/))) {
+      const wanted = m[1].trim().toLowerCase();
+      const same = s.tasks.find((x) => !x.done && x.text.trim().toLowerCase() === wanted);
+      if (same) return reply(`That is already on your list as task #${same.id}.`, 'happy');
       const task = { id: id(), text: raw.slice(raw.length - m[1].length), done: false, created: now };
       s.tasks.push(task);
       return reply(`Added task #${task.id}: ${task.text}`);
@@ -94,9 +97,13 @@
       return reply('Note saved.');
     }
     if ((m = t.match(/^(?:drank|drink)\s+(\d{1,2})\s*(?:glass|glasses|cup|cups)?$/))) {
+      const n = Number(m[1]);
+      if (n < 1) return reply('Tell me how many glasses you drank, for example "drank 2 glasses".', 'confused');
+      if (n > 20) return reply('That is more than 20 glasses in one go. Please log a smaller number, or check the total on Health.', 'confused');
       const day = dayKey(now);
-      s.water[day] = (s.water[day] || 0) + Math.min(20, Number(m[1])) * WATER_GLASS_ML;
+      s.water[day] = (s.water[day] || 0) + n * WATER_GLASS_ML;
       const left = Math.max(0, WATER_GOAL_ML - s.water[day]);
+      if (s.water[day] >= 3000) return reply(`Water today: ${s.water[day]} ml. That is a lot for one day. Are you feeling all right?`, 'worried');
       return reply(left ? `Water today: ${s.water[day]} ml. ${left} ml to go.` : `Water goal reached: ${s.water[day]} ml. Well done!`, 'excited');
     }
     if (/^(water|water today|how much water)$/.test(t)) {
@@ -105,7 +112,8 @@
     if ((m = t.match(/^goal\s*:?\s+(.+)$/)) && !/^goal\s*:?\s+(\d+)/.test(t)) {
       const body = raw.slice(raw.length - m[1].length);
       const tgt = body.match(/(\d+)\s*(?:steps|times|days|pages|sessions)?$/);
-      const target = tgt ? Math.min(999, Math.max(1, Number(tgt[1]))) : 10;
+      if (tgt && Number(tgt[1]) < 1) return reply('A goal needs at least one step. Try "goal learn guitar 20 steps".', 'confused');
+      const target = tgt ? Math.min(999, Number(tgt[1])) : 10;
       const title = (tgt ? body.slice(0, body.length - tgt[0].length) : body).replace(/\b(to|for)\s*$/i, '').trim() || 'My goal';
       const g = { id: id(), title: title.slice(0, 120), target, progress: 0, done: false, created: now };
       s.goals.push(g);

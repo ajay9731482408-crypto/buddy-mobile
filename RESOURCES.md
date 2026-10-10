@@ -36,3 +36,55 @@ Buddy's avatar is an original drawing built for this app. Ideas that informed th
 - **SVG** (MDN, "SVG"): the face is a single vector drawing, so it is sharp at any size and light to redraw.
 
 Why this matters: if you ever publish Buddy, use your own name, character and artwork, and read the licence of any project you learn from.
+
+
+## Natural voice and the smart agent (added with v6)
+- **Google Gemini text-to-speech** (ai.google.dev, "Speech generation"): the voice is requested with `responseModalities: ["AUDIO"]` and a named voice. The service returns raw 16-bit audio, which the Worker wraps in a WAV header so every browser can play it. Chosen because, in the 2026 listening board we checked, Gemini's speech models ranked near the top. Results depend on the voice you pick and on the phone.
+- **Anthropic Messages API** (docs.anthropic.com, "Messages"): the agent calls the model with a system instruction and the recent conversation. The instruction asks for JSON with a short answer and a list of commands. The app accepts only commands from Buddy's own list.
+- **Why keys stay on the Worker:** browsers can be inspected, so any key in the app can be taken. The Worker holds the keys, checks the sync secret, and limits daily use.
+- **Honest limit:** this is not "all the resources on the internet" in one app. It is a small set of tested, documented services. Each new one needs its own key, terms and testing.
+
+## Bible Strong Avatar Lab (saksham.700x post, 2026): decision
+- The post describes an open-source avatar studio (avatars.bible-strong.app) that exports code under **AGPL-3.0**. I could not open the site or its repository from the build environment, so I did not copy any of its code.
+- Why not copied: AGPL-3.0 applies to software run over a network. Buddy is published on Vercel, so using AGPL code would oblige you to publish all of Buddy under AGPL and make its source available to users.
+- What was done instead: the **ideas** from the post are built in Buddy's own avatar code. The face reacts to a mistake (worried, and the field shakes), celebrates a success (happy), and wakes up when the page opens.
+- If you want that studio's artwork: export your own design from the studio, check its terms for commercial use, and tell me the file names. Static art can then be used without importing its code.
+
+
+## The notch (Buddy Mobile)
+- The notch is an original component, written for Buddy (the same design as the notch in the Buddy launch project). It has five states: idle, working (a label and a moving bar), result (a green or red dot after each reply), alert (reminders with buttons), and open (quick actions). Its state logic is pure and tested (12 tests).
+- Ideas: the "dynamic island" style pill used by phones. No code was taken from any other project.
+
+
+## Voice: Amazon Polly (v7)
+- **Amazon's own Alexa voice is not available to third-party apps.** Buddy uses **Amazon Polly** neural voices instead (aws.amazon.com/polly). These come from the same family of speech technology, and they sound natural. They are not the Alexa voice itself.
+- Polly is called from the Worker with **AWS Signature Version 4**, written with the Web Crypto API. It is checked against AWS's published test vector ("get-vanilla"), so the signing matches AWS's specification. The AWS secret key stays on the Worker and is never sent to the phone.
+- Polly's audio is raw 16-bit PCM at 16 kHz. The Worker wraps it in a WAV header so any browser can play it.
+- Honest limit: this was not run against the live AWS service from the build environment (no internet access). The first real call on your Worker is the test that matters.
+
+
+## Free open-source voice (v8): what was compared and chosen
+Sources: a 2026 open-source TTS guide (tts.ai), a mid-2026 comparison (dev.ocdevel.com), and the project pages on GitHub and Hugging Face.
+
+| Option | Licence | Runs on a phone? | Keys or card | Decision |
+|---|---|---|---|---|
+| **Kokoro** (hexgrad/kokoro, 82M parameters) with **kokoro-js** and Transformers.js | Apache 2.0 | **Yes**, in the browser (WebAssembly, or WebGPU where available) | None | **Chosen as the default free voice.** |
+| Piper | MIT | Designed for very small devices (CPU, Raspberry Pi) | None | Kept as an option for a future offline build. |
+| Chatterbox (Resemble AI) | MIT | No, needs a GPU and Python | None | Not used in the app. Strong for voice cloning on a computer. |
+| Fish Audio S2 | Research licence (commercial use is paid) | No | Paid for commercial use | Not used. |
+| Orpheus | Llama 3.2 licence | No (large) | None | Not used. |
+
+**Honest notes**
+- The browser library and the model are loaded from public CDN and model hosting. Before publishing the app, pin an exact version of `kokoro-js` (the code uses `@1` for now) and check the library's current README for the loading options.
+- The model was not downloaded or listened to in the build environment (no internet access). The first real reply on a phone is the test that matters.
+- If you publish Buddy, keep the Apache 2.0 notice for Kokoro with the app.
+
+
+## Better agent: tool use (v9)
+Sources: Anthropic's documentation for the Messages API (tool use, `input_schema`, `tool_use` and `tool_result` blocks, parallel tool calls), and a 2026 guide to Claude function calling (dev.to). Their advice, applied here:
+- **Define each action as a named tool** with a JSON schema for its inputs, instead of asking the model to write JSON as text. Done: nine tools, each with a strict schema, defined on the Worker.
+- **One tool, one job.** No "do anything" tool. There is no delete tool at all.
+- **Pair every tool request with a result** using its id. Done: the phone sends each `tool_result` back with the matching `tool_use` id, and the model's own request stays in the conversation.
+- **Check inputs before they run.** Done: the phone re-checks every input (types, ranges, lists, allowed words) and runs only the matching Buddy command. Invalid requests are not run, and the model is told why.
+- **Limit the loop.** Done: at most four model turns per message.
+- **Strict schemas.** Each tool sets `strict: true`, which Anthropic describes as making tool inputs follow the schema exactly. Check the current docs if the API ever rejects the field.
